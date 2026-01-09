@@ -1,0 +1,30 @@
+[build-system]
+requires = ["uv_build>=0.9.6,<0.10.0"]
+build-backend = "uv_build"
+
+[project]
+name = "lfp-build"
+version = "0.0.1+g52383da"
+description = "Local build utilities"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "uv>=0.9.9",
+    "ruff",
+    "taplo",
+    "sitecustomize-entrypoints",
+    "tomlkit",
+    "mergedeep",
+    "typer",
+]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[project.entry-points.sitecustomize]
+logs_auto_config = "lfp_build.config:init"
+
+[project.scripts]
+lfp-build = "lfp_build.cli:main"
+
+[tool.uv.workspace]
+members = []
