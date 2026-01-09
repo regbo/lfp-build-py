@@ -420,20 +420,4 @@ def _ruff_format(path: pathlib.Path):
 
 
 if "__main__" == __name__:
-    from typer.testing import CliRunner
-
-    from lfp_build import cli
-
-    runner = CliRunner()
-    runner.invoke(
-        cli.app,
-        [
-            "sync",
-            "-o",
-            "./.dev-local",
-            "-r",
-            "/Users/reggie.pierce/Projects/reggie-bricks-py",
-        ],
-        catch_exceptions=False,
-    )
-    LOG.info("Complete")
+    pass

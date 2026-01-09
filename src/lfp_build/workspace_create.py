@@ -106,29 +106,4 @@ def create(
 
 
 if "__main__" == __name__:
-    os.chdir("/Users/reggie.pierce/Projects/reggie-bricks-py")
-    if True:
-        create(
-            "cool-dude",
-            path=workspace.root_dir() / "packages/cool",
-            project_dependencies=["reggie-cv"],
-        )
-    else:
-        from typer.testing import CliRunner
-
-        from lfp_build import cli
-
-        runner = CliRunner()
-        runner.invoke(
-            cli.app,
-            [
-                "create",
-                "cool-dude",
-                "-pd",
-                "lfp-build",
-                # "-r",
-                # "/Users/reggie.pierce/Projects/reggie-bricks-py",
-            ],
-            catch_exceptions=False,
-        )
-    LOG.info("Complete")
+    pass
