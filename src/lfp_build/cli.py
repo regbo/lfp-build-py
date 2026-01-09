@@ -11,11 +11,13 @@ a unified interface for workspace management. The CLI provides commands for:
 """
 
 import logging
+import os
+import pathlib
 from typing import Annotated
 
 import typer
 
-from lfp_build import readme, workspace_create, workspace_sync
+from lfp_build import config, readme, workspace_create, workspace_sync
 
 app = typer.Typer()
 app.add_typer(workspace_create.app, name="create")
@@ -25,13 +27,24 @@ app.add_typer(readme.app, name="readme")
 
 @app.callback()
 def _callback(
+    working_directory: Annotated[
+        pathlib.Path | None,
+        typer.Option(
+            "--working_directory",
+            "-w",
+            help="Set the current working directory",
+        ),
+    ] = None,
     log_level: Annotated[
         str | None,
         typer.Option(
-            help="Set the log level explicitly (e.g. DEBUG, INFO, WARNING, ERROR)."
+            help="Set the log level explicitly (e.g. DEBUG, INFO, WARNING, ERROR).",
+            envvar=config.LOG_LEVEL_ENV_NAME,
         ),
     ] = None,
 ):
+    if working_directory:
+        os.chdir(working_directory)
     log_level_no = (
         logging.getLevelNamesMapping().get(log_level.upper(), None)
         if log_level

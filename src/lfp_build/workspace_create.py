@@ -42,7 +42,7 @@ def create(
         list[str] | None,
         typer.Option(
             "--project-dependency",
-            "-pd",
+            "-d",
             help="List of existing workspace projects to depend on.",
         ),
     ] = None,

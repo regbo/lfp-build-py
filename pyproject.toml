@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "lfp-build"
-version = "0.0.1+g52383da"
+version = "0.0.1+gd34ccfc"
 description = "Local build utilities"
 requires-python = ">=3.12,<3.14"
 dependencies = [
@@ -27,4 +27,3 @@ logs_auto_config = "lfp_build.config:init"
 lfp-build = "lfp_build.cli:main"
 
 [tool.uv.workspace]
-members = []
