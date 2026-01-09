@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest"]
+dev = ["pytest", "taplo"]
 
 [project.entry-points.sitecustomize]
 logs_auto_config = "lfp_build.config:init"
