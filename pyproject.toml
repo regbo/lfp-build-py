@@ -10,7 +10,6 @@ requires-python = ">=3.12,<3.14"
 dependencies = [
     "uv>=0.9.9",
     "ruff",
-    "taplo==0.8.1",
     "sitecustomize-entrypoints",
     "tomlkit",
     "mergedeep",

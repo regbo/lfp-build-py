@@ -1,9 +1,11 @@
 import filecmp
+import functools
 import logging
 import pathlib
 import shutil
 import subprocess
 from dataclasses import dataclass, field
+from functools import lru_cache
 from tempfile import NamedTemporaryFile
 from typing import Mapping
 from urllib.parse import urlparse
@@ -266,10 +268,23 @@ def _git_repo_name(path: pathlib.Path) -> str | None:
     return None
 
 
+def _file_path(path: pathlib.Path) -> pathlib.Path:
+    """
+    Normalize a path to a pyproject.toml file, creating parent directories if needed.
+    """
+    if path.is_dir():
+        return path / FILE_NAME
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def _format(path: pathlib.Path):
     """
     Apply taplo formatting to a TOML file with workspace-specific options.
     """
+    taplo_path = _taplo_path()
+    if not taplo_path:
+        return
     fmt_stdout = subprocess.check_output(
         [
             "taplo",
@@ -286,14 +301,13 @@ def _format(path: pathlib.Path):
     LOG.debug("Taplo format: %s", fmt_stdout.strip())
 
 
-def _file_path(path: pathlib.Path) -> pathlib.Path:
-    """
-    Normalize a path to a pyproject.toml file, creating parent directories if needed.
-    """
-    if path.is_dir():
-        return path / FILE_NAME
-    path.parent.mkdir(parents=True, exist_ok=True)
-    return path
+@functools.cache
+def _taplo_path():
+    try:
+        return pathlib.Path(shutil.which("taplo"))
+    except Exception:
+        LOG.warn("Taplo not found, skipping format")
+        return None
 
 
 if __name__ == "__main__":
