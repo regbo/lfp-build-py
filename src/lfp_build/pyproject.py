@@ -77,6 +77,7 @@ class PyProject:
             updated_hash_stat = _hash_stat(self.path)
             if hash_stat[0] != updated_hash_stat[0]:
                 return True
+            LOG.debug("File unchanged reverting utime: %s", self)
             st = hash_stat[1]
             os.utime(self.path, (st.st_atime, st.st_mtime))
         return False
