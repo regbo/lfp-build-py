@@ -392,11 +392,7 @@ def _ruff_format(path: pathlib.Path):
     """
     check_select = ["UP007", "UP006", "F401", "I"]
     run_arg_options = {
-        "check": [
-            "--select",
-            ",".join(check_select),
-            "--fix",
-        ],
+        "check": ["--select", ",".join(check_select), "--fix", "--exit-zero"],
         "format": [],
     }
     for arg, options in run_arg_options.items():
