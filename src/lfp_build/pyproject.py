@@ -54,7 +54,7 @@ class PyProject:
                 self._data = tomlkit.load(f)
         return self._data
 
-    def persist(self, force_format: bool = False) -> bool:
+    def persist(self, force_format: bool = False) -> str | None:
         """
         Save the current state of the project configuration to disk.
 
@@ -63,7 +63,7 @@ class PyProject:
         """
         data = self._data
         if data is None or not force_format:
-            return False
+            return None
         hash = _hash(self.path)
         temp_path = pathlib.Path(NamedTemporaryFile(delete=False, suffix=".toml").name)
         try:
@@ -77,9 +77,9 @@ class PyProject:
             if hash != _hash(temp_path):
                 shutil.move(temp_path, self.path)
                 temp_path = None
-                return True
+                return hash
             else:
-                return False
+                return None
         finally:
             if temp_path is not None:
                 temp_path.unlink()
@@ -208,7 +208,7 @@ def _prune(data: Mapping):
 
 def _hash(path: pathlib.Path) -> str:
     with open(path, "rb") as f:
-        return hashlib.file_digest(f, "sha256").hexdigest()
+        return hashlib.file_digest(f, "md5").hexdigest()
 
 
 def _git_repo_name(path: pathlib.Path) -> str | None:

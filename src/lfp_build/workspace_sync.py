@@ -103,13 +103,13 @@ def sync(
         pyproject_tree.name: pyproject_tree.root,
         **pyproject_tree.members,
     }.items():
-        updated = proj.persist(
+        hash = proj.persist(
             force_format=format_pyproject,
         )
         LOG.info(
-            "Project synced - name:%s updated:%s path:%s",
+            "Project synced - name:%s updated_hash:%s path:%s",
             proj_name,
-            updated,
+            hash,
             proj.path,
         )
 
