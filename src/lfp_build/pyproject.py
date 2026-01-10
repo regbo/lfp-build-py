@@ -65,8 +65,8 @@ class PyProject:
         if data is None or not force_format:
             return False
         hash = _hash(self.path)
-        with NamedTemporaryFile(suffix=".toml") as tf:
-            temp_path = pathlib.Path(tf.name)
+        temp_path = pathlib.Path(NamedTemporaryFile(delete=False, suffix=".toml"))
+        try:
             if data is not None:
                 _prune(data)
                 with temp_path.open("w") as f:
@@ -76,9 +76,13 @@ class PyProject:
             _format(temp_path)
             if hash != _hash(temp_path):
                 temp_path.replace(self.path)
+                temp_path = None
                 return True
             else:
                 return False
+        finally:
+            if temp_path is not None:
+                temp_path.unlink()
 
     def table(self, *keys: str, create: bool = False) -> Table | None:
         """
