@@ -266,7 +266,7 @@ def sync_member_paths(
 
 
 def _workspace_member_paths(
-    root: pathlib.Path, paths: list[pathlib.Path], excludes: list[str]
+    root: pathlib.Path, paths: list[pathlib.Path], excludes: list[str] | None
 ) -> list[str]:
     """
     Consolidate project paths into parent wildcards (e.g., 'packages/*') strictly.
@@ -277,6 +277,9 @@ def _workspace_member_paths(
 
     if not all(p.is_relative_to(root) for p in paths):
         raise ValueError("All paths must be under root")
+
+    # Ensure excludes is a list to avoid iteration errors
+    excludes = excludes or []
 
     original_rels = {p.relative_to(root) for p in paths}
     final_paths = set(original_rels)

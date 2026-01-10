@@ -4,6 +4,8 @@ import os
 import pathlib
 import subprocess
 import sys
+import threading
+from tkinter import N
 from typing import Any, Callable, Iterator
 
 """
@@ -89,6 +91,7 @@ def process_start(
     program_name: str | None = None,
     stdout_log_level: int | None = None,
     stderr_log_level: int | None = logging.DEBUG,
+    stderr_log_background: bool = False,
     check=True,
     cwd: pathlib.Path = None,
     env: dict | None = None,
@@ -123,27 +126,35 @@ def process_start(
         bufsize=1,
     )
 
-    def _read(stream, log_level: int | None, publish: bool) -> Iterator[str]:
-        if stream is not None:
-            for line in stream:
-                if line:
-                    line = line[:-1]
-                    if log_level is not None:
-                        logger(__name__).log(
-                            log_level,
-                            f"[{program_name if program_name else commands[0]}] | {line}",
-                        )
-                    if publish:
-                        yield line
+    def _read_stream(stream) -> Iterator[str]:
+        for line in stream:
+            if line:
+                yield line[:-1]
 
+    def _log_line(line: str, log_level: int):
+        logger(__name__).log(
+            log_level,
+            f"[{program_name if program_name else commands[0]}] | {line}",
+        )
+
+    thread: threading.Thread | N = None
     try:
-        readers: list[Iterator[str]] = [
-            _read(proc.stderr, log_level=stderr_log_level, publish=False),
-            _read(proc.stdout, log_level=stdout_log_level, publish=True),
-        ]
-        for reader in readers:
-            for line in reader:
-                yield line
+        if stderr_log_level is not None:
+
+            def _log_stderr():
+                for line in _read_stream(proc.stderr):
+                    _log_line(line, stderr_log_level)
+
+            if stderr_log_background:
+                thread = threading.Thread(target=_log_stderr)
+                thread.start()
+            else:
+                _log_stderr()
+
+        for line in _read_stream(proc.stdout):
+            if stdout_log_level is not None:
+                _log_line(line, stdout_log_level)
+            yield line
     finally:
         if proc.poll() is None:
             try:
@@ -152,6 +163,8 @@ def process_start(
             except subprocess.TimeoutExpired:
                 proc.terminate()
         proc.wait()
+        if thread is not None:
+            thread.join()
         if check and proc.returncode != 0:
             raise subprocess.CalledProcessError(
                 returncode=proc.returncode, cmd=proc.args
