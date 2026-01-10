@@ -107,9 +107,9 @@ def sync(
             force_format=format_pyproject,
         )
         LOG.info(
-            "Project synced - name:%s updated_hash:%s path:%s",
+            "Project synced - updated:%s name:%s path:%s",
+            hash is not None,
             proj_name,
-            hash,
             proj.path,
         )
 

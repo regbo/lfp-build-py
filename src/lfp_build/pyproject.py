@@ -81,6 +81,7 @@ class PyProject:
             else:
                 return None
         finally:
+            self._data = None
             if temp_path is not None:
                 temp_path.unlink()
 
@@ -243,9 +244,13 @@ def _file_path(path: pathlib.Path) -> pathlib.Path:
     Normalize a path to a pyproject.toml file, creating parent directories if needed.
     """
     if path.is_dir():
-        return path / FILE_NAME
-    path.parent.mkdir(parents=True, exist_ok=True)
-    return path
+        path = path / FILE_NAME
+    else:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        return path.resolve().relative_to(pathlib.Path.cwd())
+    except ValueError:
+        return path
 
 
 def _format(path: pathlib.Path):
