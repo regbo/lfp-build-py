@@ -12,10 +12,8 @@ Main entry point for the lfp-build CLI.
 
 This module aggregates all subcommands from other modules and provides
 a unified interface for workspace management. The CLI provides commands for:
-- Cleaning build artifacts
 - Creating new projects
 - Synchronizing project configurations
-- Generating FastAPI code from OpenAPI specifications
 - Updating README documentation with command help output
 """
 

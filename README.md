@@ -279,7 +279,7 @@ your-workspace/
 │   ├── pyproject.toml
 │   └── src/
 │       └── services/
-└── dev-local/                  # Auto-created for generated code
+└── packages/                    # Optional subdirectory for projects
 ```
 
 ### Workspace Configuration

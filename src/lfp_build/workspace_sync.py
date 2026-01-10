@@ -103,14 +103,15 @@ def sync(
         pyproject_tree.name: pyproject_tree.root,
         **pyproject_tree.members,
     }.items():
-        if proj.persist(
+        updated = proj.persist(
             force_format=format_pyproject,
-        ):
-            LOG.info(
-                "Project updated - name:%s path:%s",
-                proj_name,
-                proj.path,
-            )
+        )
+        LOG.info(
+            "Project synced - name:%s updated:%s path:%s",
+            proj_name,
+            updated,
+            proj.path,
+        )
 
 
 def sync_version(projs: Collection[PyProject], version: str | None = None):
