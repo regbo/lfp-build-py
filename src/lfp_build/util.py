@@ -153,7 +153,7 @@ def process_start(
                 proc.terminate()
         proc.wait()
         if check and proc.returncode != 0:
-            raise subprocess.CalledProcessError(returncode=proc.returncode)
+            raise subprocess.CalledProcessError(proc.returncode, proc.args)
 
 
 def process_run(*args, strip: bool = True, **kwargs) -> str:
