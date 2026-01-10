@@ -307,7 +307,9 @@ def _taplo_commands() -> list[str] | None:
     program = "taplo"
     for commands in [[program], ["uv", "tool", "run", "--", program]]:
         try:
-            if util.process_run(commands[0], *commands[1:], "--version", stderr_log_level=None)
+            if util.process_run(
+                commands[0], *commands[1:], "--version", stderr_log_level=None
+            ):
                 return commands
         except Exception:
             continue
