@@ -65,7 +65,7 @@ class PyProject:
         if data is None or not force_format:
             return False
         hash = _hash(self.path)
-        temp_path = pathlib.Path(NamedTemporaryFile(delete=False, suffix=".toml"))
+        temp_path = pathlib.Path(NamedTemporaryFile(delete=False, suffix=".toml").name)
         try:
             if data is not None:
                 _prune(data)
