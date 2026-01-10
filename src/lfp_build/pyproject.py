@@ -1,7 +1,6 @@
 import functools
 import hashlib
 import logging
-import os
 import pathlib
 import shutil
 from dataclasses import dataclass, field
@@ -76,7 +75,6 @@ class PyProject:
                 shutil.copy(self.path, temp_path)
             _format(temp_path)
             if hash != _hash(temp_path):
-                LOG.debug(util.process_run("diff", self.path, temp_path, check=False))
                 temp_path.rename(self.path)
                 temp_path = None
                 return hash
