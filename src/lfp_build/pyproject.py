@@ -1,9 +1,10 @@
 import functools
 import hashlib
 import logging
-import os
 import pathlib
+import shutil
 from dataclasses import dataclass, field
+from tempfile import NamedTemporaryFile
 from typing import Collection, Mapping
 from urllib.parse import urlparse
 
@@ -60,27 +61,24 @@ class PyProject:
         If the content has changed, it writes to a temporary file, formats it
         using taplo, and then moves it to the destination.
         """
-        hash_stat: tuple[str, os.stat_result] | None = None
         data = self._data
-        if data is not None:
-            LOG.debug("Persisting: %s", self.path)
-            _prune(data)
-            hash_stat = _hash_stat(self.path)
-            with self.path.open("w") as f:
-                tomlkit.dump(data, f)
-            _format(self.path)
-        elif force_format:
-            hash_stat = _hash_stat(self.path)
-            _format(self.path)
-        if hash_stat is not None:
-            updated_hash_stat = _hash_stat(self.path)
-            if hash_stat[0] != updated_hash_stat[0]:
+        if data is None or not force_format:
+            return False
+        hash = _hash(self.path)
+        with NamedTemporaryFile(suffix=".toml") as tf:
+            temp_path = pathlib.Path(tf.name)
+            if data is not None:
+                _prune(data)
+                with temp_path.open("w") as f:
+                    tomlkit.dump(data, f)
+            else:
+                shutil.copy(self.path, temp_path)
+            _format(temp_path)
+            if hash != _hash(temp_path):
+                temp_path.replace(self.path)
                 return True
-            LOG.debug("File unchanged reverting utime: %s", self)
-            st = hash_stat[1]
-            os.utime(self.path, (st.st_atime, st.st_mtime))
-        self._data = None
-        return False
+            else:
+                return False
 
     def table(self, *keys: str, create: bool = False) -> Table | None:
         """
@@ -204,11 +202,9 @@ def _prune(data: Mapping):
                 del data[i]
 
 
-def _hash_stat(path: pathlib.Path) -> tuple[str, os.stat_result]:
+def _hash(path: pathlib.Path) -> str:
     with open(path, "rb") as f:
-        hash = hashlib.file_digest(f, "sha256").hexdigest()
-    stat = path.stat()
-    return hash, stat
+        return hashlib.file_digest(f, "sha256").hexdigest()
 
 
 def _git_repo_name(path: pathlib.Path) -> str | None:
