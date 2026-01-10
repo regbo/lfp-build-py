@@ -108,7 +108,7 @@ def sync(
         )
         LOG.info(
             "%s %s - path:%s",
-            "Checked" if hash is None else "Synced",
+            "Checked" if hash is None else "Updated",
             proj_name,
             proj.path,
         )
