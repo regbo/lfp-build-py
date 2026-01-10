@@ -69,7 +69,7 @@ class PyProject:
             The previous file hash if the file was updated, otherwise None.
         """
         data = self._data
-        if data is None or not force_format:
+        if data is None and not force_format:
             return None
         hash = _hash(self.path)
         temp_path = pathlib.Path(NamedTemporaryFile(delete=False, suffix=".toml").name)
