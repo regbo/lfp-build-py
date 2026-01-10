@@ -161,7 +161,7 @@ def _run_cmd(cmd: str) -> tuple[str, str]:
     args = shlex.split(cmd)
     has_help = "--help" in args
     LOG.debug("Running cmd block - args:%s has_help:%s", args, has_help)
-    stdout = util.process_run(cmd)
+    stdout = util.process_run(args[0], *args[1:])
 
     if has_help:
         lines = stdout.splitlines()
