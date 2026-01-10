@@ -58,8 +58,15 @@ class PyProject:
         """
         Save the current state of the project configuration to disk.
 
-        If the content has changed, it writes to a temporary file, formats it
-        using taplo, and then moves it to the destination.
+        If the content has changed or force_format is True, it writes to a
+        temporary file, formats it using taplo (or tombi), and then moves
+        it to the destination if the hash differs from the original.
+
+        Args:
+            force_format: If True, formats the file even if no data changes were made.
+
+        Returns:
+            The previous file hash if the file was updated, otherwise None.
         """
         data = self._data
         if data is None or not force_format:
@@ -68,12 +75,17 @@ class PyProject:
         temp_path = pathlib.Path(NamedTemporaryFile(delete=False, suffix=".toml").name)
         try:
             if data is not None:
+                # Remove empty tables/arrays before saving
                 _prune(data)
                 with temp_path.open("w") as f:
                     tomlkit.dump(data, f)
             else:
+                # No in-memory changes, just format existing file
                 shutil.copy(self.path, temp_path)
+
             _format(temp_path)
+
+            # Only overwrite if the formatted output actually differs
             if hash != _hash(temp_path):
                 temp_path.rename(self.path)
                 temp_path = None
@@ -129,7 +141,10 @@ class PyProjectTree:
 
     def projects(self) -> list[PyProject]:
         """
-        Return a list of all projects in the tree, starting with the root.
+        Return a list of all projects in the tree.
+
+        Returns:
+            A list containing the root project followed by all member projects.
         """
         return [self.root, *self.members.values()]
 
@@ -137,26 +152,36 @@ class PyProjectTree:
         self, names: list[str] | None, required: bool = False
     ) -> "PyProjectTree":
         """
-        Filter the members dictionary to only include specified names.
+        Create a new tree containing only the specified member projects.
 
         Args:
-            names: List of member names to keep. If None, no filtering is performed.
-            required: If True, raises ValueError if a specified name is not found.
+            names: List of member names to include. If None, all members are included.
+            required: If True, raises ValueError if a specified name is not found in the tree.
+
+        Returns:
+            A new PyProjectTree instance with the filtered members.
         """
         if not names:
             return self
         members_copy: dict[str, PyProject] = {}
-        for name in [names, *self.members.keys()]:
+        # Iterate over both the requested names and existing members
+        # to ensure we capture the requested ones correctly.
+        for name in [*names, *self.members.keys()]:
             if name in members_copy:
                 continue
             member_proj = self.members.get(name, None)
             if member_proj is None:
-                if required:
+                if required and name in names:
                     raise ValueError("Member %s not found" % name)
                 continue
-            members_copy[name] = member_proj
+            if name in names:
+                members_copy[name] = member_proj
+
+        # Determine the name for the new tree
+        new_tree_name = self.name
+
         pyproject_tree_copy = PyProjectTree(
-            name=name, root=self.root, members=members_copy
+            name=new_tree_name, root=self.root, members=members_copy
         )
         pyproject_tree_copy.filtered = True
         return pyproject_tree_copy
@@ -187,6 +212,13 @@ def tree(metadata: workspace.Metadata | None = None) -> PyProjectTree:
 
 
 def _prune(data: Any):
+    """
+    Recursively remove empty tables and arrays from a TOML document.
+
+    This ensures that the final pyproject.toml doesn't contain noise from
+    partially populated or cleared configuration sections.
+    """
+
     def _is_empty(d) -> bool:
         if not isinstance(d, str) and isinstance(d, (Collection, Mapping)):
             return len(d) == 0
@@ -208,6 +240,11 @@ def _prune(data: Any):
 
 
 def _hash(path: pathlib.Path) -> str:
+    """
+    Calculate the MD5 hash of a file's content.
+
+    Used to detect if formatting or data changes actually modified the file.
+    """
     with open(path, "rb") as f:
         return hashlib.file_digest(f, "md5").hexdigest()
 
@@ -255,7 +292,10 @@ def _file_path(path: pathlib.Path) -> pathlib.Path:
 
 def _format(path: pathlib.Path):
     """
-    Apply taplo formatting to a TOML file with workspace-specific options.
+    Apply formatting to a TOML file.
+
+    Attempts to use 'taplo' if available (either globally or via 'uv tool run').
+    Falls back to 'tombi' via 'uv tool run' if taplo is not found.
     """
     if taplo_commands := _taplo_commands():
         program = taplo_commands[0]
@@ -290,6 +330,11 @@ def _format(path: pathlib.Path):
 
 @functools.cache
 def _taplo_commands() -> list[str] | None:
+    """
+    Detect the command needed to run taplo.
+
+    Checks for a native 'taplo' installation first, then tries 'uv tool run taplo'.
+    """
     program = "taplo"
     for commands in [[program], ["uv", "tool", "run", "--", program]]:
         try:
