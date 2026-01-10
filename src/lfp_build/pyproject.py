@@ -69,7 +69,6 @@ class PyProject:
             with self.path.open("w") as f:
                 tomlkit.dump(data, f)
             _format(self.path)
-            self._data = None
         elif force_format:
             hash_stat = _hash_stat(self.path)
             _format(self.path)
@@ -80,6 +79,7 @@ class PyProject:
             LOG.debug("File unchanged reverting utime: %s", self)
             st = hash_stat[1]
             os.utime(self.path, (st.st_atime, st.st_mtime))
+        self._data = None
         return False
 
     def table(self, *keys: str, create: bool = False) -> Table | None:
