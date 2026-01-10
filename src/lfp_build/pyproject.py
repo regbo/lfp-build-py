@@ -6,7 +6,7 @@ import pathlib
 import shutil
 from dataclasses import dataclass, field
 from tempfile import NamedTemporaryFile
-from typing import Mapping
+from typing import Collection, Mapping
 from urllib.parse import urlparse
 
 import tomlkit
@@ -27,42 +27,6 @@ LOG = util.logger(__name__)
 FILE_NAME = "pyproject.toml"
 _MAX_BLANK_LINES = 1
 _INDENT = " " * 4
-
-
-@dataclass
-class TableNode:
-    """
-    Represents a node in a TOML table hierarchy.
-
-    Provides utilities for navigating and modifying nested TOML tables,
-    specifically for removing and pruning empty tables.
-    """
-
-    table: Table
-    _parent_entry: tuple["TableNode", str] | None = field(default=None)
-
-    def remove(self) -> bool:
-        """
-        Remove the current table from its parent node.
-        """
-        if parent_entry := self._parent_entry:
-            parent, key = parent_entry
-            if key in parent.table:
-                parent.table.pop(key)
-                return True
-        return False
-
-    def prune(self) -> bool:
-        """
-        Recursively remove this table and its parents if they are empty.
-        """
-        mod = False
-        if self.table and self.remove():
-            mod = True
-        if parent_entry := self._parent_entry:
-            if parent_entry[0].prune():
-                mod = True
-        return mod
 
 
 class PyProject:
@@ -106,6 +70,7 @@ class PyProject:
             destination_path = _file_path(destination_path)
         if data := self._data:
             LOG.debug("Persisting: %s", destination_path)
+            _prune(data)
             temp_path = pathlib.Path(
                 NamedTemporaryFile(delete=False, suffix=".toml").name
             )
@@ -133,15 +98,14 @@ class PyProject:
         else:
             return False
 
-    def table(self, *keys: str, create: bool = False) -> TableNode | None:
+    def table(self, *keys: str, create: bool = False) -> Table | None:
         """
         Navigate to a specific table in the TOML hierarchy.
 
         Optionally creates the table path if it doesn't exist.
         """
-        cur_node = TableNode(self.data)
+        cur_table = self.data
         for key in keys:
-            cur_table = cur_node.table
             value = cur_table.get(key, None)
             if not isinstance(value, Mapping):
                 if create:
@@ -152,8 +116,8 @@ class PyProject:
                         cur_table.add(key, value)
                 else:
                     return None
-            cur_node = TableNode(value, _parent_entry=(cur_node, key))
-        return cur_node
+            cur_table = value
+        return cur_table
 
     def __repr__(self):
         if data := self._data:
@@ -233,6 +197,27 @@ def tree(metadata: workspace.Metadata | None = None) -> PyProjectTree:
         root=root_proj,
         members=member_projs,
     )
+
+
+def _prune(data: Mapping):
+    def _is_empty(d) -> bool:
+        if not isinstance(d, str) and isinstance(d, (Collection, Mapping)):
+            return len(d) == 0
+        else:
+            return False
+
+    if isinstance(data, Mapping):
+        for k in list(data.keys()):
+            v = data[k]
+            _prune(v)
+            if _is_empty(v):
+                del data[k]
+    elif not isinstance(data, str) and isinstance(data, Collection):
+        for i in range(len(data) - 1, -1, -1):
+            v = data[i]
+            _prune(v)
+            if _is_empty(v):
+                del data[i]
 
 
 def _git_repo_name(path: pathlib.Path) -> str | None:

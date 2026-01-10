@@ -224,10 +224,9 @@ def _sync_member_project_dependencies(pyproject_tree: PyProjectTree, proj: PyPro
                 dependencies[idx] = _member_dependency(proj, dep, dep_proj)
                 member_dependencies.append(dep)
 
-    sources_node = proj.table("tool", "uv", "sources", create=bool(member_dependencies))
-    if sources_node is not None:
+    source_table = proj.table("tool", "uv", "sources", create=bool(member_dependencies))
+    if source_table is not None:
         workspace_key = "workspace"
-        source_table = sources_node.table
         for dep in list(source_table.keys()):
             workspace_value = source_table.get(dep, {}).get(workspace_key, None)
             if workspace_value is True and dep not in member_dependencies:
@@ -241,12 +240,6 @@ def _sync_member_project_dependencies(pyproject_tree: PyProjectTree, proj: PyPro
         for member_dependency in member_dependencies:
             source = {member_dependency: {workspace_key: True}}
             source_table.update(source)
-        if sources_node.prune():
-            LOG.debug(
-                "Pruned source - key:%s proj:%s",
-                workspace_key,
-                proj,
-            )
 
 
 def sync_member_paths(
@@ -257,8 +250,8 @@ def sync_member_paths(
     root_proj = unfiltered_pyproject_tree.root
     workspace_key_path = ["tool", "uv", "workspace"]
     exclude_patterns: list[str] | None = None
-    if workspace_node := root_proj.table(*workspace_key_path):
-        if exclude_item := workspace_node.table.get("exclude", None):
+    if workspace_table := root_proj.table(*workspace_key_path):
+        if exclude_item := workspace_table.get("exclude", None):
             exclude_patterns = [item.value for item in exclude_item]
     member_paths = [p.path.parent for p in unfiltered_pyproject_tree.members.values()]
     member_patterns = _workspace_member_paths(
@@ -266,8 +259,7 @@ def sync_member_paths(
         member_paths,
         exclude_patterns,
     )
-    workspace_node = root_proj.table(*workspace_key_path, create=True)
-    workspace_table = workspace_node.table
+    workspace_table = root_proj.table(*workspace_key_path, create=True)
     members_key = "members"
     if members_key in workspace_table:
         if member_patterns:
