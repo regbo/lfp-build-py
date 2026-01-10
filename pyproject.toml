@@ -1,9 +1,10 @@
 [project]
 name = "lfp-build"
-version = "0.0.1+g059c0af"
+version = "0.0.1+gc185e58"
 description = "Local build utilities"
 requires-python = ">=3.11,<3.14"
-dependencies = ["mergedeep", "ruff", "tomlkit", "typer", "uv>=0.9.9"]
+dependencies = ["mergedeep",
+    "ruff", "tomlkit", "typer", "uv>=0.9.9"]
 
 [project.scripts]
 lfp-build = "lfp_build.cli:main"

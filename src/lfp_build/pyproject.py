@@ -1,11 +1,12 @@
 import functools
 import hashlib
 import logging
+import os
 import pathlib
 import shutil
 from dataclasses import dataclass, field
 from tempfile import NamedTemporaryFile
-from typing import Collection, Mapping
+from typing import Any, Collection, Mapping
 from urllib.parse import urlparse
 
 import tomlkit
@@ -75,7 +76,8 @@ class PyProject:
                 shutil.copy(self.path, temp_path)
             _format(temp_path)
             if hash != _hash(temp_path):
-                shutil.move(temp_path, self.path)
+                LOG.debug(util.process_run("diff", self.path, temp_path, check=False))
+                temp_path.rename(self.path)
                 temp_path = None
                 return hash
             else:
@@ -185,7 +187,7 @@ def tree(metadata: workspace.Metadata | None = None) -> PyProjectTree:
     )
 
 
-def _prune(data: Mapping):
+def _prune(data: Any):
     def _is_empty(d) -> bool:
         if not isinstance(d, str) and isinstance(d, (Collection, Mapping)):
             return len(d) == 0
@@ -277,6 +279,7 @@ def _format(path: pathlib.Path):
             "--",
             program,
             "format",
+            path.absolute(),
             program_name=program,
             stdout_log_level=logging.DEBUG,
         )

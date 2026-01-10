@@ -62,6 +62,14 @@ if __name__ == "__main__":
     runner = typer.testing.CliRunner()
 
     result = runner.invoke(
-        app, ["--log-level", "DEBUG", "sync"], catch_exceptions=False
+        app,
+        [
+            "--log-level",
+            "DEBU",
+            "-w",
+            "/Users/reggie.pierce/Projects/reggie-bricks-py",
+            "sync",
+        ],
+        catch_exceptions=False,
     )
     assert result.exit_code == 0
