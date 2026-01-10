@@ -278,7 +278,6 @@ def sync_member_paths(
             workspace_table.remove(members_key)
     elif member_patterns:
         workspace_table.update({members_key: member_patterns})
-    workspace_node.prune()
 
 
 def _workspace_member_paths(
