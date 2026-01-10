@@ -107,8 +107,8 @@ def sync(
             force_format=format_pyproject,
         )
         LOG.info(
-            "Project synced - updated:%s name:%s path:%s",
-            hash is not None,
+            "%s %s - path:%s",
+            "Checked" if hash is None else "Synced",
             proj_name,
             proj.path,
         )
