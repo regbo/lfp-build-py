@@ -154,7 +154,7 @@ def process_start(
         proc.wait()
         if check and proc.returncode != 0:
             raise subprocess.CalledProcessError(
-                returncode=proc.returncode, cmd=(proc.args or commands)
+                returncode=proc.returncode, cmd=proc.args
             )
 
 

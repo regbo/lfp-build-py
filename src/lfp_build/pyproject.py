@@ -296,6 +296,7 @@ def _format(path: pathlib.Path):
             "run",
             "--",
             program,
+            "format",
             program_name=program,
             stdout_log_level=logging.DEBUG,
         )
