@@ -72,10 +72,10 @@ class PyProject:
                 with temp_path.open("w") as f:
                     tomlkit.dump(data, f)
             else:
-                shutil.move(temp_path, self.path)
+                shutil.copy(self.path, temp_path)
             _format(temp_path)
             if hash != _hash(temp_path):
-                temp_path.replace(self.path)
+                shutil.move(temp_path, self.path)
                 temp_path = None
                 return True
             else:
