@@ -225,7 +225,7 @@ def _sync_member_project_dependencies(pyproject_tree: PyProjectTree, proj: PyPro
                 member_dependencies.append(dep)
 
     sources_node = proj.table("tool", "uv", "sources", create=bool(member_dependencies))
-    if sources_node:
+    if sources_node is not None:
         workspace_key = "workspace"
         source_table = sources_node.table
         for dep in list(source_table.keys()):
@@ -266,7 +266,8 @@ def sync_member_paths(
         member_paths,
         exclude_patterns,
     )
-    workspace_table = root_proj.table(*workspace_key_path, create=True).table
+    workspace_node = root_proj.table(*workspace_key_path, create=True)
+    workspace_table = workspace_node.table
     members_key = "members"
     if members_key in workspace_table:
         if member_patterns:
@@ -275,8 +276,9 @@ def sync_member_paths(
             member_table.extend(member_patterns)
         else:
             workspace_table.remove(members_key)
-    else:
+    elif member_patterns:
         workspace_table.update({members_key: member_patterns})
+    workspace_node.prune()
 
 
 def _workspace_member_paths(

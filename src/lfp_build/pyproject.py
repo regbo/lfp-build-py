@@ -1,5 +1,6 @@
 import filecmp
 import functools
+import hashlib
 import logging
 import pathlib
 import shutil
@@ -56,7 +57,7 @@ class TableNode:
         Recursively remove this table and its parents if they are empty.
         """
         mod = False
-        if not self.table and self.remove():
+        if self.table and self.remove():
             mod = True
         if parent_entry := self._parent_entry:
             if parent_entry[0].prune():
@@ -123,9 +124,12 @@ class PyProject:
             self._data = None
             return mod
         elif force_format:
-            mtime = destination_path.stat().st_mtime
+            hash = _hash(destination_path)
             _format(destination_path)
-            return mtime != destination_path.stat().st_mtime
+            if hash != _hash(destination_path):
+                LOG.debug("Forced formatting: %s", destination_path)
+                return True
+            return False
         else:
             return False
 
@@ -266,6 +270,11 @@ def _file_path(path: pathlib.Path) -> pathlib.Path:
         return path / FILE_NAME
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def _hash(path: pathlib.Path) -> str:
+    with open(path, "rb") as f:
+        return hashlib.file_digest(f, "sha256").hexdigest()
 
 
 def _format(path: pathlib.Path):
