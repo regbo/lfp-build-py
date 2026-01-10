@@ -323,9 +323,9 @@ uv run lfp-build sync
 
 ## Module Reference
 
-### config.py
+### util.py
 
-Configuration and logging initialization for lfp-build. Sets up logging handlers and levels.
+Common utilities including logging initialization and subprocess management.
 
 ### pyproject.py
 
@@ -402,8 +402,6 @@ Contributions that enhance workspace management capabilities are welcome. Mainta
 - Add comprehensive documentation to all new or significantly modified code
 - Follow Python standard ordering for globals, functions, and classes
 - Use `_` prefix for private functions with limited scope
-- Never use em dashes, en dashes, or unnecessary hyphens in prose
-- Avoid emojis unless part of explicit instructions
 
 ## Support
 

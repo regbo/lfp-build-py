@@ -1,4 +1,17 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
+import re
+import shlex
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from multiprocessing import cpu_count
+from pathlib import Path
+from typing import Pattern
+
+import typer
+
+from lfp_build import util, workspace
+
 """
 README documentation automation utilities.
 
@@ -7,23 +20,7 @@ commands embedded in sentinel blocks and replacing the content with command outp
 Supports parallel execution, smart help filtering, and selective updates.
 """
 
-from __future__ import annotations
-
-import logging
-import os
-import re
-import shlex
-import subprocess
-from concurrent.futures import ProcessPoolExecutor, as_completed
-from multiprocessing import cpu_count
-from pathlib import Path
-from typing import Pattern
-
-import typer
-
-from lfp_build import config, workspace
-
-LOG = logging.getLogger(__name__)
+LOG = util.logger(__name__)
 
 app = typer.Typer(help="Update README command sentinel blocks.")
 
@@ -164,21 +161,10 @@ def _run_cmd(cmd: str) -> tuple[str, str]:
     args = shlex.split(cmd)
     has_help = "--help" in args
     LOG.debug("Running cmd block - args:%s has_help:%s", args, has_help)
-    env = os.environ.copy().update(
-        {config.LOG_LEVEL_ENV_NAME: logging.getLevelName(logging.ERROR)}
-    )
-    proc = subprocess.run(
-        cmd,
-        shell=True,
-        check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        env=env,
-    )
+    stdout = util.process_run(cmd)
 
     if has_help:
-        lines = proc.stdout.splitlines()
+        lines = stdout.splitlines()
 
         out: list[str] = []
         options_block: list[str] = []
@@ -216,7 +202,7 @@ def _run_cmd(cmd: str) -> tuple[str, str]:
 
         output = "\n".join(out)
     else:
-        output = proc.stdout
+        output = stdout
 
     return cmd, f"```shell\n{output.strip()}\n```"
 

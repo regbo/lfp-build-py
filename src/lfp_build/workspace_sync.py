@@ -2,7 +2,6 @@ import logging
 import os
 import pathlib
 import re
-import subprocess
 from collections import defaultdict
 from copy import deepcopy
 from typing import Annotated, Collection
@@ -10,7 +9,7 @@ from typing import Annotated, Collection
 import typer
 from mergedeep import merge
 
-from lfp_build import pyproject
+from lfp_build import pyproject, util
 from lfp_build.pyproject import PyProject, PyProjectTree
 
 """
@@ -20,7 +19,7 @@ This module provides tools to synchronize versions, build systems, tool settings
 and dependencies across the root project and its member projects.
 """
 
-LOG = logging.getLogger(__name__)
+LOG = util.logger(__name__)
 
 app = typer.Typer()
 
@@ -155,28 +154,14 @@ def _version():
     Uses '0.0.1+g{rev}' format where {rev} is the short hash of HEAD
     (or HEAD~1 if the working directory is modified).
     """
-    git_status_args = ["git", "status", "--porcelain"]
-    proc = subprocess.Popen(
-        git_status_args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        bufsize=1,
-        text=True,
-    )
     modified = False
-    for line in proc.stdout:
-        line = line.strip()
-        if line:
-            LOG.debug("Git status - args:%s line:%s", git_status_args, line)
-            modified = True
-            break
-    proc.terminate()
-    proc.wait()
+    for _ in util.process_start("git", "status", "--porcelain"):
+        modified = True
+        break
     head_arg = "HEAD" if modified else "HEAD~1"
-    rev_parse_args = ["git", "rev-parse", "--short", head_arg]
-    rev = subprocess.check_output(rev_parse_args, text=True).strip()
-    LOG.debug("Rev parse - args:%s rev:%s", rev_parse_args, rev)
-    return f"0.0.1+g{rev}"
+    rev = util.process_run("git", "rev-parse", "--short", head_arg)
+    version = "0.0.1"
+    return f"{version}+g{rev}" if rev else version
 
 
 def sync_build_system(pyproject_tree: PyProjectTree):
@@ -415,8 +400,9 @@ def _ruff_format(path: pathlib.Path):
         "format": [],
     }
     for arg, options in run_arg_options.items():
-        stdout = subprocess.check_output(["ruff", arg, *options], text=True).strip()
-        LOG.debug("Ruff format - arg:%s path:%s output:%s", arg, path, stdout)
+        util.process_run(
+            "ruff", arg, *options, cwd=path, stdout_log_level=logging.DEBUG
+        )
 
 
 if "__main__" == __name__:

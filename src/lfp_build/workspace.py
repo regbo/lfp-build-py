@@ -1,9 +1,9 @@
 import functools
 import json
-import logging
 import pathlib
-import subprocess
 from dataclasses import dataclass
+
+from lfp_build import util
 
 """
 Interface for uv workspace metadata.
@@ -12,7 +12,7 @@ Provides utilities for retrieving and parsing metadata from a uv workspace,
 enabling easy access to the workspace root and its member projects.
 """
 
-LOG = logging.getLogger(__name__)
+LOG = util.logger(__name__)
 
 
 @dataclass
@@ -50,20 +50,7 @@ def _metadata(path: pathlib.Path) -> Metadata:
     The result is cached to avoid redundant subprocess calls.
     """
     args = ["uv", "workspace", "metadata"]
-    proc = subprocess.run(
-        args,
-        text=True,
-        check=False,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        cwd=path,
-    )
-    if proc.returncode != 0:
-        LOG.warning("Failed to execute workspace metadata: %s", proc.stderr)
-        raise subprocess.CalledProcessError(
-            returncode=proc.returncode, cmd=args, output=proc.stdout, stderr=proc.stderr
-        )
-    data = json.loads(proc.stdout)
+    data = json.loads(util.process_run(*args))
     workspace_root = pathlib.Path(data["workspace_root"])
     members: list[MetadataMember] = []
     for member in data["members"]:

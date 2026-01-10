@@ -3,9 +3,7 @@ import functools
 import logging
 import pathlib
 import shutil
-import subprocess
 from dataclasses import dataclass, field
-from functools import lru_cache
 from tempfile import NamedTemporaryFile
 from typing import Mapping
 from urllib.parse import urlparse
@@ -14,7 +12,7 @@ import tomlkit
 from tomlkit import TOMLDocument
 from tomlkit.items import Table
 
-from lfp_build import workspace
+from lfp_build import util, workspace
 
 """
 Utility for managing and manipulating pyproject.toml files.
@@ -24,7 +22,7 @@ pyproject.toml files, including reading, updating, and persisting changes
 while preserving formatting using tomlkit.
 """
 
-LOG = logging.getLogger(__name__)
+LOG = util.logger(__name__)
 FILE_NAME = "pyproject.toml"
 _MAX_BLANK_LINES = 1
 _INDENT = " " * 4
@@ -238,18 +236,10 @@ def _git_repo_name(path: pathlib.Path) -> str | None:
     Attempt to determine the git repository name from the origin remote URL.
     """
     args = ["git", "remote", "get-url", "origin"]
-    cwd = path.parent if path.is_file() else path
-    try:
-        proc = subprocess.run(
-            args, cwd=cwd, check=False, text=True, capture_output=True
-        )
-    except subprocess.CalledProcessError:
-        LOG.debug("Git remote url lookup failed - args:%s", args, exc_info=True)
-        return None
-    if proc.returncode != 0:
-        LOG.debug("Git remote url lookup failed - args:%s stderr:%s", args, proc.stderr)
-        return None
-    git_origin_url = proc.stdout.strip()
+    cwd = path.parent if path is not None and path.is_file() else path
+    git_origin_url = util.process_run(
+        "git", "remote", "get-url", "origin", check=False, cwd=cwd
+    )
     if git_origin_url:
         # Normalize SSH form to URL so urlparse can handle it
         if git_origin_url.startswith("git@"):
@@ -282,32 +272,45 @@ def _format(path: pathlib.Path):
     """
     Apply taplo formatting to a TOML file with workspace-specific options.
     """
-    taplo_path = _taplo_path()
-    if not taplo_path:
-        return
-    fmt_stdout = subprocess.check_output(
-        [
-            "taplo",
-            "fmt",
-            "--option",
-            f"allowed_blank_lines={_MAX_BLANK_LINES}",
-            "--option",
-            f"indent_string={_INDENT}",
-            str(path.absolute()),
-        ],
-        text=True,
-        stderr=subprocess.STDOUT,
-    )
-    LOG.debug("Taplo format: %s", fmt_stdout.strip())
+    if taplo_commands := _taplo_commands():
+        program = taplo_commands[0]
+        args = taplo_commands[1:]
+        args.extend(
+            [
+                "fmt",
+                "--option",
+                f"allowed_blank_lines={_MAX_BLANK_LINES}",
+                "--option",
+                f"indent_string={_INDENT}",
+                path.absolute(),
+            ]
+        )
+        util.process_run(
+            program, *args, program_name="taplo", stdout_log_level=logging.DEBUG
+        )
+    else:
+        program = "tombi"
+        util.process_run(
+            "uv",
+            "tool",
+            "run",
+            "--",
+            program,
+            program_name=program,
+            stdout_log_level=logging.DEBUG,
+        )
 
 
 @functools.cache
-def _taplo_path():
-    try:
-        return pathlib.Path(shutil.which("taplo"))
-    except Exception:
-        LOG.warn("Taplo not found, skipping format")
-        return None
+def _taplo_commands() -> list[str] | None:
+    program = "taplo"
+    for commands in [[program], ["uv", "tool", "run", "--", program]]:
+        try:
+            if util.process_run(commands[0], *commands[1:], "--version"):
+                return commands
+        except Exception:
+            continue
+    return None
 
 
 if __name__ == "__main__":
