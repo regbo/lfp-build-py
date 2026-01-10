@@ -1,11 +1,9 @@
-import filecmp
 import functools
 import hashlib
 import logging
+import os
 import pathlib
-import shutil
 from dataclasses import dataclass, field
-from tempfile import NamedTemporaryFile
 from typing import Collection, Mapping
 from urllib.parse import urlparse
 
@@ -55,48 +53,33 @@ class PyProject:
                 self._data = tomlkit.load(f)
         return self._data
 
-    def persist(
-        self, destination_path: pathlib.Path = None, force_format: bool = False
-    ) -> bool:
+    def persist(self, force_format: bool = False) -> bool:
         """
         Save the current state of the project configuration to disk.
 
         If the content has changed, it writes to a temporary file, formats it
         using taplo, and then moves it to the destination.
         """
-        if destination_path is None:
-            destination_path = self.path
-        else:
-            destination_path = _file_path(destination_path)
-        if data := self._data:
-            LOG.debug("Persisting: %s", destination_path)
+        hash_stat: tuple[str, os.stat_result] | None = None
+        data = self._data
+        if data is not None:
+            LOG.debug("Persisting: %s", self.path)
             _prune(data)
-            temp_path = pathlib.Path(
-                NamedTemporaryFile(delete=False, suffix=".toml").name
-            )
-            mod = False
-            try:
-                with temp_path.open("w") as f:
-                    tomlkit.dump(data, f)
-                _format(temp_path)
-                diff = not filecmp.cmp(temp_path, destination_path, shallow=False)
-                if diff:
-                    shutil.move(temp_path, destination_path)
-                    mod = True
-            finally:
-                if not mod:
-                    temp_path.unlink()
+            hash_stat = _hash_stat(self.path)
+            with self.path.open("w") as f:
+                tomlkit.dump(data, f)
+            _format(self.path)
             self._data = None
-            return mod
         elif force_format:
-            hash = _hash(destination_path)
-            _format(destination_path)
-            if hash != _hash(destination_path):
-                LOG.debug("Forced formatting: %s", destination_path)
+            hash_stat = _hash_stat(self.path)
+            _format(self.path)
+        if hash_stat is not None:
+            updated_hash_stat = _hash_stat(self.path)
+            if hash_stat[0] != updated_hash_stat[0]:
                 return True
-            return False
-        else:
-            return False
+            st = hash_stat[1]
+            os.utime(self.path, (st.st_atime, st.st_mtime))
+        return False
 
     def table(self, *keys: str, create: bool = False) -> Table | None:
         """
@@ -220,6 +203,13 @@ def _prune(data: Mapping):
                 del data[i]
 
 
+def _hash_stat(path: pathlib.Path) -> tuple[str, os.stat_result]:
+    with open(path, "rb") as f:
+        hash = hashlib.file_digest(f, "sha256").hexdigest()
+    stat = path.stat()
+    return hash, stat
+
+
 def _git_repo_name(path: pathlib.Path) -> str | None:
     """
     Attempt to determine the git repository name from the origin remote URL.
@@ -255,11 +245,6 @@ def _file_path(path: pathlib.Path) -> pathlib.Path:
         return path / FILE_NAME
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
-
-
-def _hash(path: pathlib.Path) -> str:
-    with open(path, "rb") as f:
-        return hashlib.file_digest(f, "sha256").hexdigest()
 
 
 def _format(path: pathlib.Path):

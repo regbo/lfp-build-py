@@ -68,10 +68,6 @@ def sync(
         pathlib.Path | None,
         typer.Option("--root-dir", "-r", hidden=True, help="Root directory."),
     ] = None,
-    output_dir: Annotated[
-        pathlib.Path | None,
-        typer.Option("--output-dir", "-o", hidden=True, help="Output directory."),
-    ] = None,
     new_pyprojects: Annotated[
         dict[str, PyProject] | None,
         typer.Option(hidden=True, parser=lambda _: None),
@@ -85,8 +81,6 @@ def sync(
     """
     if root_dir:
         os.chdir(root_dir)
-    if output_dir:
-        output_dir = output_dir.absolute()
     unfiltered_pyproject_tree = pyproject.tree()
     if new_pyprojects:
         for name, proj in new_pyprojects.items():
@@ -109,15 +103,13 @@ def sync(
         pyproject_tree.name: pyproject_tree.root,
         **pyproject_tree.members,
     }.items():
-        destination_path = output_dir / proj.path if output_dir else None
         if proj.persist(
-            destination_path=destination_path,
             force_format=format_pyproject,
         ):
             LOG.info(
                 "Project updated - name:%s path:%s",
                 proj_name,
-                destination_path or proj.path,
+                proj.path,
             )
 
 
