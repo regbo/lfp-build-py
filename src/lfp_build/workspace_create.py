@@ -3,8 +3,9 @@ from typing import Annotated
 
 import tomlkit
 import typer
+from lfp_logging import logs
 
-from lfp_build import pyproject, util, workspace, workspace_sync
+from lfp_build import pyproject, workspace, workspace_sync
 
 """
 Utilities for creating workspace member projects.
@@ -13,7 +14,7 @@ Provides a command to bootstrap new member projects within a uv workspace,
 setting up the directory structure, package layout, and dependencies.
 """
 
-LOG = util.logger(__name__)
+LOG = logs.logger(__name__)
 _PATH = pathlib.Path("packages")
 
 

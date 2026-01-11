@@ -3,6 +3,8 @@ import json
 import pathlib
 from dataclasses import dataclass
 
+from lfp_logging import logs
+
 from lfp_build import util
 
 """
@@ -12,7 +14,7 @@ Provides utilities for retrieving and parsing metadata from a uv workspace,
 enabling easy access to the workspace root and its member projects.
 """
 
-LOG = util.logger(__name__)
+LOG = logs.logger(__name__)
 
 
 @dataclass

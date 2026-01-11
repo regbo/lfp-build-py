@@ -7,6 +7,7 @@ from copy import deepcopy
 from typing import Annotated, Collection
 
 import typer
+from lfp_logging import logs
 from mergedeep import merge
 
 from lfp_build import pyproject, util
@@ -19,8 +20,7 @@ This module provides tools to synchronize versions, build systems, tool settings
 and dependencies across the root project and its member projects.
 """
 
-LOG = util.logger(__name__)
-
+LOG = logs.logger(__name__)
 app = typer.Typer()
 
 

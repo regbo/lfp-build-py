@@ -9,6 +9,7 @@ from typing import Any, Collection, Mapping
 from urllib.parse import urlparse
 
 import tomlkit
+from lfp_logging import logs
 from tomlkit import TOMLDocument
 from tomlkit.items import Table
 
@@ -22,7 +23,7 @@ pyproject.toml files, including reading, updating, and persisting changes
 while preserving formatting using tomlkit.
 """
 
-LOG = util.logger(__name__)
+LOG = logs.logger(__name__)
 FILE_NAME = "pyproject.toml"
 _MAX_BLANK_LINES = 1
 _INDENT = " " * 4

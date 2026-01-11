@@ -1,12 +1,10 @@
-import functools
 import logging
-import os
 import pathlib
 import subprocess
-import sys
 import threading
-from tkinter import N
-from typing import Any, Callable, Iterator
+from typing import Any, Iterator
+
+from lfp_logging import logs
 
 """
 Common utilities for the lfp-build package.
@@ -15,74 +13,7 @@ Provides logging configuration and subprocess management tools used across
 the workspace management CLI.
 """
 
-LOG_LEVEL_ENV_NAME = "LOG_LEVEL"
-
-
-def logger(name: str) -> logging.Logger:
-    """
-    Get a logger with the specified name, ensuring logging is configured.
-
-    Args:
-        name: The name of the logger (typically __name__)
-
-    Returns:
-        A configured logging.Logger instance
-    """
-    _logging_config()
-    return logging.getLogger(name)
-
-
-@functools.cache
-def _logging_config():
-    """
-    Initialize the logging configuration for the application.
-
-    This function sets up handlers for both stdout (INFO only) and stderr
-    (all other levels) with specific formatting and date formats. It uses
-    the LOG_LEVEL environment variable to determine the global logging level,
-    defaulting to INFO.
-    """
-    date_format = "%Y-%m-%d %H:%M:%S"
-    format_stdout = "%(message)s"
-    format_stderr = (
-        "%(asctime)s.%(msecs)03d | %(levelname)s | %(name)s:%(lineno)d - %(message)s"
-    )
-    log_level_env = os.getenv(LOG_LEVEL_ENV_NAME, "").upper()
-    log_level = logging.getLevelNamesMapping().get(log_level_env, logging.INFO)
-
-    def _create_handler(
-        stream,
-        level: int,
-        format: str,
-        filter_fn: Callable[[logging.LogRecord], bool] | None = None,
-    ) -> logging.Handler:
-        handler = logging.StreamHandler(stream)  # type: ignore[arg-type]
-        handler.setLevel(level)
-        handler.setFormatter(logging.Formatter(format))
-        if filter_fn is not None:
-            handler.addFilter(filter_fn)
-        return handler
-
-    handlers = [
-        _create_handler(
-            sys.stdout,
-            logging.INFO,
-            format_stdout,
-            lambda record: record.levelno == logging.INFO,
-        ),
-        _create_handler(
-            sys.stderr,
-            logging.DEBUG,
-            format_stderr,
-            lambda record: record.levelno != logging.INFO,
-        ),
-    ]
-
-    logging.basicConfig(
-        level=log_level,
-        datefmt=date_format,
-        handlers=handlers,
-    )
+LOG = logs.logger(__name__)
 
 
 def process_start(
@@ -132,12 +63,12 @@ def process_start(
                 yield line[:-1]
 
     def _log_line(line: str, log_level: int):
-        logger(__name__).log(
+        LOG.log(
             log_level,
             f"[{program_name if program_name else commands[0]}] | {line}",
         )
 
-    thread: threading.Thread | N = None
+    thread: threading.Thread | None = None
     try:
         if stderr_log_level is not None:
 

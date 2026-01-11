@@ -1,10 +1,13 @@
 import os
 import pathlib
 import shutil
-import tempfile
 import subprocess
+import tempfile
+
 import pytest
+
 from lfp_build import pyproject
+
 
 @pytest.fixture
 def temp_workspace():
@@ -13,12 +16,12 @@ def temp_workspace():
     # Resolve the temp directory to handle macOS /private/var symlink
     tmp_dir = pathlib.Path(tempfile.mkdtemp()).resolve()
     os.chdir(tmp_dir)
-    
+
     # Init git
     subprocess.run(["git", "init"], check=True, capture_output=True)
     subprocess.run(["git", "config", "user.email", "test@example.com"], check=True)
     subprocess.run(["git", "config", "user.name", "Test User"], check=True)
-    
+
     # Create root pyproject.toml
     # Added empty exclude list to avoid crash in _workspace_member_paths
     root_pyproject = tmp_dir / "pyproject.toml"
@@ -38,15 +41,16 @@ build-backend = "hatchling.build"
 [tool.member-project]
 dependencies = ["requests"]
 """)
-    
+
     # Commit initial state
     subprocess.run(["git", "add", "."], check=True)
     subprocess.run(["git", "commit", "-m", "initial commit"], check=True)
-    
+
     yield tmp_dir
-    
+
     os.chdir(old_cwd)
     shutil.rmtree(tmp_dir)
+
 
 @pytest.fixture
 def sample_pyproject(temp_workspace):

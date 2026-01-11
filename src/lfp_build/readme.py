@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Pattern
 
 import typer
+from lfp_logging import logs
 
 from lfp_build import util, workspace
 
@@ -20,7 +21,7 @@ commands embedded in sentinel blocks and replacing the content with command outp
 Supports parallel execution, smart help filtering, and selective updates.
 """
 
-LOG = util.logger(__name__)
+LOG = logs.logger(__name__)
 
 app = typer.Typer(help="Update README command sentinel blocks.")
 

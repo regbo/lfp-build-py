@@ -4,8 +4,9 @@ import pathlib
 from typing import Annotated
 
 import typer
+from lfp_logging import logs
 
-from lfp_build import readme, util, workspace_create, workspace_sync
+from lfp_build import readme, workspace_create, workspace_sync
 
 """
 Main entry point for the lfp-build CLI.
@@ -37,7 +38,7 @@ def _callback(
         str | None,
         typer.Option(
             help="Set the log level explicitly (e.g. DEBUG, INFO, WARNING, ERROR).",
-            envvar=util.LOG_LEVEL_ENV_NAME,
+            envvar=logs.LOG_LEVEL_ENV_NAME,
         ),
     ] = None,
 ):

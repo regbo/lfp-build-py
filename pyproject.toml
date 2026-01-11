@@ -1,9 +1,16 @@
 [project]
 name = "lfp-build"
-version = "0.0.1+g6337624"
+version = "0.0.1+g587b2ef"
 description = "Local build utilities"
 requires-python = ">=3.11,<3.14"
-dependencies = ["mergedeep", "ruff", "tomlkit", "typer", "uv>=0.9.9"]
+dependencies = [
+    "mergedeep",
+    "ruff",
+    "tomlkit",
+    "typer",
+    "uv>=0.9.9",
+    "lfp_logging @ git+https://github.com/regbo/lfp-logging-py.git",
+]
 
 [project.scripts]
 lfp-build = "lfp_build.cli:main"
