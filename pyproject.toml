@@ -1,6 +1,6 @@
 [project]
 name = "lfp-build"
-version = "0.0.1+g587b2ef"
+version = "0.0.1+g19a292c"
 description = "Local build utilities"
 requires-python = ">=3.11,<3.14"
 dependencies = [

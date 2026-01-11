@@ -1,4 +1,3 @@
-import logging
 import os
 import pathlib
 from typing import Annotated
@@ -44,13 +43,7 @@ def _callback(
 ):
     if working_directory:
         os.chdir(working_directory)
-    log_level_no = (
-        logging.getLevelNamesMapping().get(log_level.upper(), None)
-        if log_level
-        else None
-    )
-    if log_level_no:
-        logging.root.setLevel(log_level_no)
+    os.environ.setdefault(logs.LOG_FORMAT_STDOUT_ENV_NAME, "%(message)s")
 
 
 def main():
