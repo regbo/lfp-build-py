@@ -9,10 +9,9 @@ from lfp_build import util
 
 
 def test_logger():
-    """Test logger initialization and naming."""
-    log = util.logger("test_logger")
-    assert isinstance(log, logging.Logger)
-    assert log.name == "test_logger"
+    """Test logger availability."""
+    assert isinstance(util.LOG, logging.Logger)
+    assert util.LOG.name == "lfp_build.util"
 
 
 def test_process_run_success():
@@ -41,16 +40,18 @@ def test_process_start_clean_shutdown():
         # A command that would run indefinitely printing "hello world"
         cmd = ["sh", "-c", "while true; do echo 'hello world'; sleep 0.1; done"]
 
-        # Use a small timeout to ensure it doesn't run forever if something goes wrong
-        gen = util.process_start(
-            cmd[0], *cmd[1:], check=False, stderr_log_background=True
-        )
-        count = 0
-        for line in gen:
-            lines.put(line)
-            count += 1
-            if count == 2:
-                break
+        # Run stderr logging in the background so stdout consumption is not blocked.
+        gen = util.process_start(cmd[0], *cmd[1:], check=False, stderr_log_background=True)
+        try:
+            count = 0
+            for line in gen:
+                q.put(line)
+                count += 1
+                if count == 2:
+                    break
+        finally:
+            # Ensure the generator finalizer runs immediately so the subprocess is killed.
+            gen.close()
 
     lines = queue.Queue[str]()
     thread = threading.Thread(target=_run, args=(lines,))

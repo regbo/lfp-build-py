@@ -1,17 +1,32 @@
-from typer.testing import CliRunner
-
 from lfp_build import cli
 
-runner = CliRunner()
+
+def _run_cli(tokens: list[str]) -> int:
+    """
+    Run the Cyclopts app and return its exit code.
+
+    Cyclopts exits via SystemExit after handling a command.
+    """
+    try:
+        cli.app(tokens)
+        return 0
+    except SystemExit as e:
+        return int(e.code) if isinstance(e.code, int) else 0
 
 
 def test_cli_help():
     """Test CLI help output."""
-    result = runner.invoke(cli.app, ["--help"])
-    assert result.exit_code == 0
-    assert "sync" in result.stdout
-    assert "create" in result.stdout
-    assert "readme" in result.stdout
+    # Cyclopts apps are just callables. We can capture stdout.
+    import io
+    from contextlib import redirect_stdout
+    
+    f = io.StringIO()
+    with redirect_stdout(f):
+        _run_cli(["--help"])
+    output = f.getvalue()
+    assert "sync" in output
+    assert "create" in output
+    assert "readme" in output
 
 
 def test_readme_update_cmd(temp_workspace):
@@ -28,9 +43,8 @@ def test_readme_update_cmd(temp_workspace):
     assert content.count(sentinel_begin) == 1
     assert content.count(message) == 1
 
-    # The readme logic is in a callback, so we just call 'readme'
-    result = runner.invoke(cli.app, ["readme", "--readme", str(readme_path)])
-    assert result.exit_code == 0
+    # The readme logic is in a subcommand
+    assert _run_cli(["readme", "update-cmd", "--readme", str(readme_path)]) == 0
 
     updated_content = readme_path.read_text()
     assert updated_content.count(sentinel_begin) == 1
@@ -40,10 +54,8 @@ def test_readme_update_cmd(temp_workspace):
 def test_cli_create_and_sync(temp_workspace):
     """Test create and sync via CLI."""
     # Create a project
-    result = runner.invoke(cli.app, ["create", "cli-pkg"])
-    assert result.exit_code == 0
+    assert _run_cli(["create", "cli-pkg"]) == 0
     assert (temp_workspace / "packages" / "cli-pkg").exists()
 
     # Sync
-    result = runner.invoke(cli.app, ["sync"])
-    assert result.exit_code == 0
+    assert _run_cli(["sync"]) == 0

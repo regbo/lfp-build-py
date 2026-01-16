@@ -1,8 +1,9 @@
 import pathlib
 from typing import Annotated
 
+import cyclopts
 import tomlkit
-import typer
+from cyclopts import App
 from lfp_logging import logs
 
 from lfp_build import pyproject, workspace, workspace_sync
@@ -18,32 +19,20 @@ LOG = logs.logger(__name__)
 _PATH = pathlib.Path("packages")
 
 
-app = typer.Typer()
+app = App()
 
 
-@app.callback(invoke_without_command=True)
+@app.default
 def create(
-    name: Annotated[
-        str,
-        typer.Argument(
-            help="The name of the new project (used for directory and package name)."
-        ),
-    ],
+    name: str,
+    *,
     path: Annotated[
-        pathlib.Path | None,
-        typer.Option(
-            "--path",
-            "-p",
-            help="Optional parent directory within the workspace root. Defaults to root.",
-        ),
+        pathlib.Path,
+        cyclopts.Parameter(alias="-p"),
     ] = _PATH,
-    project_dependencies: Annotated[
+    project_dependency: Annotated[
         list[str] | None,
-        typer.Option(
-            "--project-dependency",
-            "-d",
-            help="List of existing workspace projects to depend on.",
-        ),
+        cyclopts.Parameter(alias="-d"),
     ] = None,
 ) -> None:
     """
@@ -51,6 +40,15 @@ def create(
 
     Sets up a pyproject.toml and a standard src/<package>/__init__.py layout.
     Internal workspace dependencies are automatically synchronized after creation.
+
+    Parameters
+    ----------
+    name
+        The name of the new project (used for directory and package name).
+    path
+        Optional parent directory within the workspace root. Defaults to root.
+    project_dependency
+        List of existing workspace projects to depend on.
     """
 
     metadata = workspace.metadata()
@@ -79,7 +77,7 @@ def create(
         },
     }
     pyproject_tree = pyproject.tree(metadata=metadata)
-    if project_dependencies:
+    if project_dependency:
         # Add project dependencies as a multiline TOML array
 
         deps = tomlkit.array()
@@ -88,7 +86,7 @@ def create(
             pyproject_tree.name,
             *pyproject_tree.members.keys(),
         ]
-        for dep in project_dependencies:
+        for dep in project_dependency:
             if dep not in project_tree_names:
                 raise ValueError(f"Invalid project dependency: {dep}")
             deps.append(dep)

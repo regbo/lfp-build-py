@@ -8,7 +8,7 @@ from multiprocessing import cpu_count
 from pathlib import Path
 from typing import Pattern
 
-import typer
+from cyclopts import App
 from lfp_logging import logs
 
 from lfp_build import util, workspace
@@ -23,7 +23,7 @@ Supports parallel execution, smart help filtering, and selective updates.
 
 LOG = logs.logger(__name__)
 
-app = typer.Typer(help="Update README command sentinel blocks.")
+app = App()
 
 # Sentinel regex (generic)
 _CMD_BLOCK_RE = re.compile(
@@ -42,38 +42,33 @@ _HELP_OPTIONS_HELP_ROW_RE = re.compile(r"^\s*[│|]?\s*--help\b")
 _CODE_BLOCK_RE = re.compile(r"^([`~]{3,}).*?^\1", re.MULTILINE | re.DOTALL)
 
 
-@app.callback(invoke_without_command=True)
+@app.command()
 def update_cmd(
-    ctx: typer.Context,
-    readme: Path = typer.Option(
-        Path("README.md"),
-        "--readme",
-        "-r",
-        help="Path to README file to update.",
-        file_okay=True,
-        dir_okay=False,
-    ),
-    write: bool = typer.Option(
-        True,
-        help="Write changes back to the README file.",
-    ),
-    jobs: int = typer.Option(
-        max(1, cpu_count() - 1),
-        "--jobs",
-        "-j",
-        help="Maximum number of parallel commands.",
-    ),
-    filter: str = typer.Option(
-        None,
-        "--filter",
-        help="Regex to select which BEGIN:cmd blocks to update.",
-    ),
+    *,
+    readme: Path = Path("README.md"),
+    write: bool = True,
+    jobs: int | None = None,
+    filter: str | None = None,
 ):
     """
     Update README command sentinel blocks.
 
     Only blocks whose command matches --filter are executed and updated.
+
+    Parameters
+    ----------
+    readme
+        Path to README file to update.
+    write
+        Write changes back to the README file.
+    jobs
+        Maximum number of parallel commands. Defaults to CPU count - 1.
+    filter
+        Regex to select which BEGIN:cmd blocks to update.
     """
+    if jobs is None:
+        jobs = max(1, cpu_count() - 1)
+
     if not readme.exists():
         readme = workspace.root_dir() / readme
         if not readme.exists():

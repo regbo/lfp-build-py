@@ -328,7 +328,7 @@ Core dependencies:
 - `uv`: Workspace and dependency management
 - `ruff`: Python formatting and linting
 - `taplo`: TOML formatting
-- `typer`: CLI framework
+- `cyclopts`: CLI framework
 - `tomlkit`: TOML manipulation
 - `mergedeep`: Deep merging of configurations
 - `dacite`: Dataclass conversion
@@ -347,7 +347,7 @@ The tool is designed to be extended for your specific needs:
 The modular architecture makes it easy to add new commands for your specific needs:
 
 1. Create a new module in `src/lfp_build/`
-2. Define a Typer app with your commands
+2. Define a Cyclopts app with your commands
 3. Add it to `cli.py` to integrate with the CLI
 
 ## Real-World Examples

@@ -4,9 +4,9 @@ import pathlib
 import re
 from collections import defaultdict
 from copy import deepcopy
-from typing import Annotated, Collection
+from typing import Collection
 
-import typer
+from cyclopts import App
 from lfp_logging import logs
 from mergedeep import merge
 
@@ -21,71 +21,59 @@ and dependencies across the root project and its member projects.
 """
 
 LOG = logs.logger(__name__)
-app = typer.Typer()
+app = App()
 
 
-@app.callback(invoke_without_command=True)
+@app.default
 def sync(
-    names: Annotated[
-        list[str] | None,
-        typer.Option("--name", "-n", help="Specific member project names to sync."),
-    ] = None,
-    version: Annotated[
-        bool,
-        typer.Option(help="Sync version from git history to all member projects."),
-    ] = True,
-    build_system: Annotated[
-        bool,
-        typer.Option(
-            help="Sync [build-system] from root project to all member projects."
-        ),
-    ] = True,
-    member_project_tool: Annotated[
-        bool,
-        typer.Option(
-            help="Sync [tool.member-project] from root project to all member projects."
-        ),
-    ] = True,
-    member_project_dependencies: Annotated[
-        bool,
-        typer.Option(
-            help="Sync internal member dependencies to use file:// paths and uv workspace sources."
-        ),
-    ] = True,
-    member_paths: Annotated[
-        bool,
-        typer.Option(help="Sync member path patterns"),
-    ] = True,
-    format_python: Annotated[
-        bool,
-        typer.Option(help="Run ruff format and check on all projects."),
-    ] = True,
-    format_pyproject: Annotated[
-        bool,
-        typer.Option(help="Format pyproject.toml files using taplo."),
-    ] = True,
-    root_dir: Annotated[
-        pathlib.Path | None,
-        typer.Option("--root-dir", "-r", hidden=True, help="Root directory."),
-    ] = None,
-    new_pyprojects: Annotated[
-        dict[str, PyProject] | None,
-        typer.Option(hidden=True, parser=lambda _: None),
-    ] = None,
+    *,
+    name: list[str] | None = None,
+    version: bool = True,
+    build_system: bool = True,
+    member_project_tool: bool = True,
+    member_project_dependencies: bool = True,
+    member_paths: bool = True,
+    format_python: bool = True,
+    format_pyproject: bool = True,
+    root_dir: pathlib.Path | None = None,
+    new_pyprojects: dict[str, PyProject] | None = None,
 ):
     """
     Synchronize project configurations across the workspace.
 
     This command performs several synchronization tasks to keep member projects
     aligned with the root project settings and ensure consistent dependencies.
+
+    Parameters
+    ----------
+    name
+        Specific member project names to sync.
+    version
+        Sync version from git history to all member projects.
+    build_system
+        Sync [build-system] from root project to all member projects.
+    member_project_tool
+        Sync [tool.member-project] from root project to all member projects.
+    member_project_dependencies
+        Sync internal member dependencies to use file:// paths and uv workspace sources.
+    member_paths
+        Sync member path patterns.
+    format_python
+        Run ruff format and check on all projects.
+    format_pyproject
+        Format pyproject.toml files using taplo.
+    root_dir
+        Root directory.
+    new_pyprojects
+        Internal use only.
     """
     if root_dir:
         os.chdir(root_dir)
     unfiltered_pyproject_tree = pyproject.tree()
     if new_pyprojects:
-        for name, proj in new_pyprojects.items():
-            unfiltered_pyproject_tree.members[name] = proj
-    pyproject_tree = unfiltered_pyproject_tree.filter_members(names)
+        for n, proj in new_pyprojects.items():
+            unfiltered_pyproject_tree.members[n] = proj
+    pyproject_tree = unfiltered_pyproject_tree.filter_members(name)
     LOG.debug("Syncing projects: %s", pyproject_tree)
     if version:
         sync_version(pyproject_tree.projects())

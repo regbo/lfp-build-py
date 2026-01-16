@@ -7,7 +7,7 @@ dependencies = [
     "mergedeep",
     "ruff",
     "tomlkit",
-    "typer",
+    "cyclopts",
     "uv>=0.9.9",
     "lfp_logging @ git+https://github.com/regbo/lfp-logging-py.git",
 ]

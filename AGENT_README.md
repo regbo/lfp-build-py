@@ -34,7 +34,7 @@ this codebase.
         - Returns documentation
         - Example usage (for complex functions)
 
-3. **Update Typer command documentation**
+3. **Update Cyclopts command documentation**
     - All command arguments should use `Annotated` with help text
     - Command docstrings become CLI help text
     - Keep help text concise but informative
@@ -42,7 +42,7 @@ this codebase.
    ```python
    @app.command()
    def my_command(
-       arg: Annotated[str, typer.Argument(help="Description here")],
+       arg: Annotated[str, "Description here"],
    ):
        """
        Brief one-line description.
