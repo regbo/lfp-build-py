@@ -38,6 +38,15 @@ class MetadataMember:
 
 
 def metadata(path: pathlib.Path = None) -> Metadata:
+    """
+    Retrieve metadata for a uv workspace.
+
+    Args:
+        path: Directory within the workspace. Defaults to current working directory.
+
+    Returns:
+        Parsed uv workspace metadata.
+    """
     if path is None:
         path = pathlib.Path().cwd()
     return _metadata(path.absolute())

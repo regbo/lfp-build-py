@@ -73,21 +73,22 @@ pip install -e .
 
 <!-- BEGIN:cmd lfp-build create --help -->
 ```shell
-Usage: lfp-build create [OPTIONS] NAME COMMAND [ARGS]...                                                        
-                                                                                                                 
- Create a new member project in the workspace.                                                                   
-                                                                                                                 
- Sets up a pyproject.toml and a standard src/<package>/__init__.py layout.                                       
- Internal workspace dependencies are automatically synchronized after creation.                                  
-                                                                                                                 
-╭─ Arguments ───────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ *    name      TEXT  The name of the new project (used for directory and package name). [required]            │
-╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Options ─────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --path                -p      PATH  Optional parent directory within the workspace root. Defaults to root.    │
-│                                     [default: packages]                                                       │
-│ --project-dependency  -d      TEXT  List of existing workspace projects to depend on.                         │
-╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Usage: lfp-build create [OPTIONS] NAME
+
+Create a new member project in the workspace.                                                   
+
+
+Sets up a pyproject.toml and a standard src//init.py layout. Internal workspace dependencies are
+automatically synchronized after creation.
+
+╭─ Parameters ─────────────────────────────────────────────────────────────────────────────────╮
+│    --working-directory       Set the current working directory.                              │
+│ *  NAME --name               The name of the new project (used for directory and package     │
+│                              name). [required]                                               │
+│    --path -p                 Optional parent directory within the workspace root. Defaults   │
+│                              to root. [default: packages]                                    │
+│    --project-dependency -pd  List of existing workspace projects to depend on.               │
+╰──────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 <!-- END:cmd -->
 
@@ -115,39 +116,28 @@ Created projects include:
 
 <!-- BEGIN:cmd lfp-build sync --help -->
 ```shell
-Usage: lfp-build sync [OPTIONS] COMMAND [ARGS]...                                                               
-                                                                                                                 
- Synchronize project configurations across the workspace.                                                        
-                                                                                                                 
- This command performs several synchronization tasks to keep member projects                                     
- aligned with the root project settings and ensure consistent dependencies.                                      
-                                                                                                                 
-╭─ Options ─────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --name                         -n                                      TEXT  Specific member project names to │
-│                                                                              sync.                            │
-│ --version                          --no-version                              Sync version from git history to │
-│                                                                              all member projects.             │
-│                                                                              [default: version]               │
-│ --build-system                     --no-build-system                         Sync  from root project to all   │
-│                                                                              member projects.                 │
-│                                                                              [default: build-system]          │
-│ --member-project-tool              --no-member-project-tool                  Sync  from root project to all   │
-│                                                                              member projects.                 │
-│                                                                              [default: member-project-tool]   │
-│ --member-project-dependencies      --no-member-project-dependencies          Sync internal member             │
-│                                                                              dependencies to use file://      │
-│                                                                              paths and uv workspace sources.  │
-│                                                                              [default:                        │
-│                                                                              member-project-dependencies]     │
-│ --member-paths                     --no-member-paths                         Sync member path patterns        │
-│                                                                              [default: member-paths]          │
-│ --format-python                    --no-format-python                        Run ruff format and check on all │
-│                                                                              projects.                        │
-│                                                                              [default: format-python]         │
-│ --format-pyproject                 --no-format-pyproject                     Format pyproject.toml files      │
-│                                                                              using taplo.                     │
-│                                                                              [default: format-pyproject]      │
-╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Usage: lfp-build sync [OPTIONS]
+
+Synchronize project configurations across the workspace.                                        
+
+This command performs several synchronization tasks to keep member projects aligned with the    
+root project settings and ensure consistent dependencies.
+
+╭─ Parameters ─────────────────────────────────────────────────────────────────────────────────╮
+│ --working-directory            Set the current working directory.                            │
+│ --name                         Specific member project names to sync.                        │
+│ --version                      Sync version from git history to all member projects.         │
+│                                [default: True]                                               │
+│ --build-system                 Sync [build-system] from root project to all member projects. │
+│                                [default: True]                                               │
+│ --member-project-tool          Sync [tool.member-project] from root project to all member    │
+│                                projects. [default: True]                                     │
+│ --member-project-dependencies  Sync internal member dependencies to use file:// paths and uv │
+│                                workspace sources. [default: True]                            │
+│ --member-paths                 Sync member path patterns. [default: True]                    │
+│ --format-python                Run ruff format and check on all projects. [default: True]    │
+│ --format-pyproject             Format pyproject.toml files using taplo. [default: True]      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 <!-- END:cmd -->
 
@@ -166,16 +156,14 @@ uv run lfp-build sync --no-version --no-format-python
 
 <!-- BEGIN:cmd lfp-build readme --help -->
 ```shell
-Usage: lfp-build readme [OPTIONS] COMMAND [ARGS]...                                                             
-                                                                                                                 
- Update README command sentinel blocks.                                                                          
-                                                                                                                 
-╭─ Options ─────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --readme  -r                FILE     Path to README file to update. [default: README.md]                      │
-│ --write       --no-write             Write changes back to the README file. [default: write]                  │
-│ --jobs    -j                INTEGER  Maximum number of parallel commands. [default: 13]                       │
-│ --filter                    TEXT     Regex to select which BEGIN:cmd blocks to update.                        │
-╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Usage: lfp-build readme COMMAND
+
+╭─ Commands ───────────────────────────────────────────────────────────────────────────────────╮
+│ update-cmd  Update README command sentinel blocks.                                           │
+╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Parameters ─────────────────────────────────────────────────────────────────────────────────╮
+│ --working-directory  Set the current working directory.                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 <!-- END:cmd -->
 

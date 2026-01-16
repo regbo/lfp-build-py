@@ -21,6 +21,8 @@ Utility for managing and manipulating pyproject.toml files.
 This module provides the PyProject class for high-level operations on
 pyproject.toml files, including reading, updating, and persisting changes
 while preserving formatting using tomlkit.
+
+Formatting is applied using taplo when available, with a fallback to tombi.
 """
 
 LOG = logs.logger(__name__)

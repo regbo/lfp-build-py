@@ -33,6 +33,9 @@ def launcher(
     """
     Main entry point for the lfp-build CLI.
 
+    This function exists to support a global working directory option and then
+    forward all remaining tokens to the Cyclopts app.
+
     Parameters
     ----------
     working_directory

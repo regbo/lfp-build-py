@@ -36,9 +36,6 @@ _CMD_BLOCK_RE = re.compile(
 )
 
 
-_HELP_OPTIONS_HEADER_RE = re.compile(r"\bOptions\b.*[-─]")
-_HELP_OPTIONS_FOOTER_RE = re.compile(r"^\s*[-─╰╯]+")
-_HELP_OPTIONS_HELP_ROW_RE = re.compile(r"^\s*[│|]?\s*--help\b")
 _CODE_BLOCK_RE = re.compile(r"^([`~]{3,}).*?^\1", re.MULTILINE | re.DOTALL)
 
 
@@ -155,52 +152,9 @@ def _run_cmd(cmd: str) -> tuple[str, str]:
         is wrapped in markdown code block
     """
     args = shlex.split(cmd)
-    has_help = "--help" in args
-    LOG.debug("Running cmd block - args:%s has_help:%s", args, has_help)
+    LOG.debug("Running cmd block - args:%s", args)
     stdout = util.process_run(args[0], *args[1:])
-
-    if has_help:
-        lines = stdout.splitlines()
-
-        out: list[str] = []
-        options_block: list[str] = []
-        in_options = False
-
-        for line in lines:
-            if _HELP_OPTIONS_HEADER_RE.search(line):
-                in_options = True
-                options_block = [line]
-                continue
-
-            if in_options:
-                options_block.append(line)
-
-                if _HELP_OPTIONS_FOOTER_RE.match(line):
-                    has_real_options = any(
-                        not _HELP_OPTIONS_HELP_ROW_RE.search(opt_line)
-                        and not _HELP_OPTIONS_HEADER_RE.search(opt_line)
-                        and not _HELP_OPTIONS_FOOTER_RE.match(opt_line)
-                        and opt_line.strip()
-                        for opt_line in options_block
-                    )
-
-                    if has_real_options:
-                        for opt_line in options_block:
-                            if not _HELP_OPTIONS_HELP_ROW_RE.search(opt_line):
-                                out.append(opt_line)
-
-                    options_block = []
-                    in_options = False
-
-                continue
-
-            out.append(line)
-
-        output = "\n".join(out)
-    else:
-        output = stdout
-
-    return cmd, f"```shell\n{output.strip()}\n```"
+    return cmd, f"```shell\n{stdout.strip()}\n```"
 
 
 def main():

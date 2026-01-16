@@ -9,8 +9,7 @@ from lfp_logging import logs
 """
 Common utilities for the lfp-build package.
 
-Provides logging configuration and subprocess management tools used across
-the workspace management CLI.
+Provides subprocess management tools used across the workspace management CLI.
 """
 
 LOG = logs.logger(__name__)
@@ -31,7 +30,7 @@ def process_start(
     Start a subprocess and yield its stdout line by line.
 
     Logs stdout and stderr to the configured logger at the specified levels.
-    Stderr is logged but not yielded unless specified otherwise.
+    Stderr is logged but not yielded.
 
     Args:
         program: The executable to run
@@ -39,6 +38,7 @@ def process_start(
         program_name: Name used in log prefix (defaults to executable path)
         stdout_log_level: Level to log stdout (None to disable)
         stderr_log_level: Level to log stderr (defaults to DEBUG)
+        stderr_log_background: If True, drain and log stderr in a background thread
         check: If True, raises CalledProcessError on non-zero exit code
         cwd: Working directory for the process
         env: Environment variables for the process
@@ -89,10 +89,10 @@ def process_start(
     finally:
         if proc.poll() is None:
             try:
-                proc.kill()
+                proc.terminate()
                 proc.wait(timeout=1)
             except subprocess.TimeoutExpired:
-                proc.terminate()
+                proc.kill()
         proc.wait()
         if thread is not None:
             thread.join()
