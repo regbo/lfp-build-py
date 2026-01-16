@@ -34,8 +34,9 @@ def sync(
     member_project_tool: bool = True,
     member_project_dependencies: bool = True,
     member_paths: bool = True,
-    format_python: bool = True,
+    reorder_pyproject: bool = True,
     format_pyproject: bool = True,
+    format_python: bool = True,
     new_pyprojects: Annotated[
         dict[str, PyProject] | None, cyclopts.Parameter(show=False)
     ] = None,
@@ -60,10 +61,12 @@ def sync(
         Sync internal member dependencies to use file:// paths and uv workspace sources.
     member_paths
         Sync member path patterns.
-    format_python
-        Run ruff format and check on all projects.
+    reorder_pyproject
+        Order pyproject entries where applicable.
     format_pyproject
         Format pyproject.toml files using taplo.
+    format_python
+        Run ruff format and check on all projects.
     new_pyprojects
         Internal use only.
     """
@@ -83,6 +86,8 @@ def sync(
         sync_member_project_dependencies(unfiltered_pyproject_tree, pyproject_tree)
     if member_paths:
         sync_member_paths(unfiltered_pyproject_tree)
+    if reorder_pyproject:
+        sync_pyproject_order(pyproject_tree)
     if format_python:
         ruff_format(pyproject_tree.projects())
     for proj_name, proj in {
@@ -351,6 +356,50 @@ def _member_dependency(member_proj: PyProject, dep: str, dep_proj: PyProject):
     relative_path = os.path.relpath(dep_proj_dir, member_proj_dir)
     member_dependency = f"{dep} @ file://$" + "{PROJECT_ROOT}/" + str(relative_path)
     return member_dependency
+
+
+def sync_pyproject_order(
+    pyproject_tree: PyProjectTree,
+):
+    def _order(proj: PyProject):
+        data = proj.data  # tomlkit document
+
+        items = list(data.items())
+
+        build_system = []
+        project = []
+        project_children = []
+        dependency_groups = []
+        rest = []
+
+        for key, value in items:
+            if key == "build-system":
+                build_system.append((key, value))
+            elif key == "project":
+                project.append((key, value))
+            elif key.startswith("project."):
+                project_children.append((key, value))
+            elif key == "dependency-groups":
+                dependency_groups.append((key, value))
+            else:
+                rest.append((key, value))
+
+        data.clear()
+
+        for group in (
+            build_system,
+            project,
+            project_children,
+            dependency_groups,
+            rest,
+        ):
+            for k, v in group:
+                data.add(k, v)
+
+        return proj
+
+    for proj in pyproject_tree.projects():
+        _order(proj)
 
 
 def ruff_format(projs: list[PyProject]):

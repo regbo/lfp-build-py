@@ -80,8 +80,9 @@ class PyProject:
             if data is not None:
                 # Remove empty tables/arrays before saving
                 _prune(data)
+                data_text = tomlkit.dumps(data).strip() + "\n"
                 with temp_path.open("w") as f:
-                    tomlkit.dump(data, f)
+                    f.write(data_text)
             else:
                 # No in-memory changes, just format existing file
                 shutil.copy(self.path, temp_path)
