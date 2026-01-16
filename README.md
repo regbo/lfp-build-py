@@ -254,8 +254,8 @@ members = ["*/"]
 exclude = ["legacy", "archived"]
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.9.6,<0.10.0"]
+build-backend = "uv_build"
 
 # This section will be synced to all member projects
 [tool.member-project]
@@ -271,7 +271,7 @@ build-backend = "hatchling.build"
 uv run lfp-build sync
 
 # Or sync specific aspects
-uv run lfp-build sync --no-format-python
+uv run lfp-build sync --format-python
 ```
 
 **Before Committing**:
