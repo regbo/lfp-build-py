@@ -4,8 +4,9 @@ import pathlib
 import re
 from collections import defaultdict
 from copy import deepcopy
-from typing import Collection
+from typing import Annotated, Collection
 
+import cyclopts
 from cyclopts import App
 from lfp_logging import logs
 from mergedeep import merge
@@ -35,8 +36,9 @@ def sync(
     member_paths: bool = True,
     format_python: bool = True,
     format_pyproject: bool = True,
-    root_dir: pathlib.Path | None = None,
-    new_pyprojects: dict[str, PyProject] | None = None,
+    new_pyprojects: Annotated[
+        dict[str, PyProject] | None, cyclopts.Parameter(show=False)
+    ] = None,
 ):
     """
     Synchronize project configurations across the workspace.
@@ -62,13 +64,9 @@ def sync(
         Run ruff format and check on all projects.
     format_pyproject
         Format pyproject.toml files using taplo.
-    root_dir
-        Root directory.
     new_pyprojects
         Internal use only.
     """
-    if root_dir:
-        os.chdir(root_dir)
     unfiltered_pyproject_tree = pyproject.tree()
     if new_pyprojects:
         for n, proj in new_pyprojects.items():

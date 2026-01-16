@@ -32,7 +32,7 @@ def create(
     ] = _PATH,
     project_dependency: Annotated[
         list[str] | None,
-        cyclopts.Parameter(alias="-d"),
+        cyclopts.Parameter(alias="-pd"),
     ] = None,
 ) -> None:
     """

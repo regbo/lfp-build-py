@@ -19,7 +19,7 @@ a unified interface for workspace management. The CLI provides commands for:
 
 LOG = logs.logger(__name__)
 
-app = cyclopts.App()
+app = cyclopts.App(default_parameter=cyclopts.Parameter(negative=""))
 app.command(workspace_create.app, name="create")
 app.command(workspace_sync.app, name="sync")
 app.command(readme.app, name="readme")
