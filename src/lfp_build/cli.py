@@ -23,6 +23,7 @@ app.add_typer(workspace_sync.app, name="sync")
 app.add_typer(readme.app, name="readme")
 
 
+# noinspection PyUnusedLocal
 @app.callback()
 def _callback(
     working_directory: Annotated[
@@ -37,13 +38,11 @@ def _callback(
         str | None,
         typer.Option(
             help="Set the log level explicitly (e.g. DEBUG, INFO, WARNING, ERROR).",
-            envvar=logs.LOG_LEVEL_ENV_NAME,
         ),
     ] = None,
 ):
     if working_directory:
         os.chdir(working_directory)
-    os.environ.setdefault(logs.LOG_FORMAT_STDOUT_ENV_NAME, "%(message)s")
 
 
 def main():
