@@ -37,6 +37,7 @@ def _callback(
     log_level: Annotated[
         str | None,
         typer.Option(
+            "--log-level",
             help="Set the log level explicitly (e.g. DEBUG, INFO, WARNING, ERROR).",
         ),
     ] = None,
