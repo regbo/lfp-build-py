@@ -5,7 +5,7 @@ from typing import Annotated
 import cyclopts
 from lfp_logging import logs
 
-from lfp_build import readme, workspace_create, workspace_sync
+from lfp_build import readme, rename, workspace_create, workspace_sync
 
 """
 Main entry point for the lfp-build CLI.
@@ -23,6 +23,7 @@ app = cyclopts.App(default_parameter=cyclopts.Parameter(negative=""))
 app.command(workspace_create.app, name="create")
 app.command(workspace_sync.app, name="sync")
 app.command(readme.app, name="readme")
+app.command(rename.app, name="rename")
 
 
 @app.meta.default

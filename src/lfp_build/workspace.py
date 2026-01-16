@@ -53,7 +53,7 @@ def metadata(path: pathlib.Path = None) -> Metadata:
 
 
 @functools.lru_cache(maxsize=None)
-def _metadata(path: pathlib.Path) -> Metadata:
+def _metadata(cwd: pathlib.Path) -> Metadata:
     """
     Retrieve and parse metadata from the uv workspace.
 
@@ -61,7 +61,7 @@ def _metadata(path: pathlib.Path) -> Metadata:
     The result is cached to avoid redundant subprocess calls.
     """
     args = ["uv", "workspace", "metadata"]
-    data = json.loads(util.process_run(*args))
+    data = json.loads(util.process_run(*args, cwd=cwd))
     workspace_root = pathlib.Path(data["workspace_root"])
     members: list[MetadataMember] = []
     for member in data["members"]:
