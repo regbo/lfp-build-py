@@ -1,12 +1,11 @@
 import functools
 import json
 import pathlib
-import subprocess
 from dataclasses import dataclass
 
 from lfp_logging import logs
 
-from lfp_build import pyproject, util
+from lfp_build import util
 
 """
 Interface for uv workspace metadata.
@@ -70,7 +69,3 @@ def _metadata(cwd: pathlib.Path) -> Metadata:
         path = pathlib.Path(member["path"])
         members.append(MetadataMember(name=name, path=path))
     return Metadata(workspace_root=workspace_root, members=members)
-
-
-if __name__ == "__main__":
-    print(root_dir())

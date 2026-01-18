@@ -6,6 +6,18 @@ from os import PathLike
 
 from dotenv import load_dotenv
 
+"""
+Environment configuration loader for lfp-build.
+
+This module is registered via `sitecustomize-entrypoints` (see
+`pyproject.toml` under `[project.entry-points.sitecustomize]`) so it is
+automatically executed on Python startup. It loads environment variables from
+a dotenv file.
+
+The dotenv file defaults to `.dev.env` and can be overridden by setting the
+`PYTHON_DOTENV_FILE` environment variable.
+"""
+
 PYROJECT_FILE_NAME = "pyproject.toml"
 
 _ENV_FILE_NAME_ENVAR_NAME = "PYTHON_DOTENV_FILE"
