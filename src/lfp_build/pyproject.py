@@ -13,7 +13,7 @@ from lfp_logging import logs
 from tomlkit import TOMLDocument
 from tomlkit.items import Table
 
-from lfp_build import util, workspace
+from lfp_build import _config, util, workspace
 
 """
 Utility for managing and manipulating pyproject.toml files.
@@ -26,7 +26,6 @@ Formatting is applied using taplo when available, with a fallback to tombi.
 """
 
 LOG = logs.logger(__name__)
-FILE_NAME = "pyproject.toml"
 _MAX_BLANK_LINES = 1
 _INDENT = " " * 4
 
@@ -285,7 +284,7 @@ def _file_path(path: pathlib.Path) -> pathlib.Path:
     Normalize a path to a pyproject.toml file, creating parent directories if needed.
     """
     if path.is_dir():
-        path = path / FILE_NAME
+        path = path / _config.PYROJECT_FILE_NAME
     else:
         path.parent.mkdir(parents=True, exist_ok=True)
     try:

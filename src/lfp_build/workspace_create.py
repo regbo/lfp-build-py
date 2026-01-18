@@ -6,7 +6,7 @@ import tomlkit
 from cyclopts import App
 from lfp_logging import logs
 
-from lfp_build import pyproject, workspace, workspace_sync
+from lfp_build import _config, pyproject, workspace, workspace_sync
 
 """
 Utilities for creating workspace member projects.
@@ -59,7 +59,7 @@ def create(
         raise ValueError(f"Path must be relative to root - root:{root_dir} path:{path}")
 
     project_dir = path / name
-    pyproject_path = project_dir / pyproject.FILE_NAME
+    pyproject_path = project_dir / _config.PYROJECT_FILE_NAME
 
     # Don't overwrite existing projects
     if pyproject_path.exists():

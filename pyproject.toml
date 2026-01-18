@@ -4,16 +4,21 @@ version = "0.0.1+g19a292c"
 description = "Local build utilities"
 requires-python = ">=3.11,<3.14"
 dependencies = [
+    "uv>=0.9.9",
     "mergedeep",
     "ruff",
     "tomlkit",
     "cyclopts",
-    "uv>=0.9.9",
     "lfp_logging @ git+https://github.com/regbo/lfp-logging-py.git",
+    "python-dotenv",
+    "sitecustomize-entrypoints",
 ]
 
 [project.scripts]
 lfp-build = "lfp_build.cli:main"
+
+[project.entry-points.sitecustomize]
+lfp-build-config = "lfp_build._config:load"
 
 # test123
 [dependency-groups]

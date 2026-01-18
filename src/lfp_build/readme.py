@@ -67,7 +67,7 @@ def update_cmd(
         jobs = max(1, cpu_count() - 1)
 
     if not readme.exists():
-        readme = workspace.root_dir() / readme
+        readme = workspace.metadata().workspace_root / readme
         if not readme.exists():
             raise ValueError(f"README file not found at {readme}")
 
