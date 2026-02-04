@@ -42,7 +42,6 @@ def launcher(
     working_directory
         Set the current working directory.
     """
-    print(working_directory)
     if working_directory:
         working_directory = working_directory.resolve()
         LOG.debug("Changing working directory to: %s", working_directory)
