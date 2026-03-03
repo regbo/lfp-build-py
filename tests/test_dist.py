@@ -18,6 +18,7 @@ def test_dist_builds_all_workspace_members(monkeypatch, tmp_path):
             workspace.MetadataMember(name="pkg", path=pkg),
         ],
     )
+    monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(workspace_dist.workspace, "metadata", lambda: metadata)
 
     calls: list[tuple[tuple, dict]] = []
@@ -63,8 +64,9 @@ def test_dist_writes_to_custom_out_dir_and_overwrites(monkeypatch, tmp_path):
     project.mkdir()
     out_dir = tmp_path / ".example"
     out_dir.mkdir()
-    existing_wheel = out_dir / "project-0.0.1-py3-none-any.whl"
+    existing_wheel = out_dir / "project-0.0.1+goldsha-py3-none-any.whl"
     existing_wheel.write_text("old")
+    new_wheel_name = "project-0.0.1+newsha-py3-none-any.whl"
 
     metadata = workspace.Metadata(
         workspace_root=project,
@@ -76,12 +78,13 @@ def test_dist_writes_to_custom_out_dir_and_overwrites(monkeypatch, tmp_path):
         out_index = args.index("--out-dir")
         temp_out_dir = pathlib.Path(args[out_index + 1])
         temp_out_dir.mkdir(parents=True, exist_ok=True)
-        (temp_out_dir / existing_wheel.name).write_text("new")
+        (temp_out_dir / new_wheel_name).write_text("new")
         return ""
 
     monkeypatch.setattr(workspace_dist.util, "process_run", _process_run)
 
     workspace_dist.dist(out_dir=out_dir)
 
-    assert existing_wheel.read_text() == "new"
+    assert not existing_wheel.exists()
+    assert (out_dir / new_wheel_name).read_text() == "new"
 

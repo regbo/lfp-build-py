@@ -214,13 +214,14 @@ Usage: lfp-build dist [OPTIONS]
 Build wheel artifacts for workspace projects.
 
 ╭─ Parameters ─────────────────────────────────────────────────────────────────╮
-│ --working-directory      Set the current working directory.                  │
-│ --name                   Optional member project names to build. If omitted, │
-│                          all workspace projects from metadata are built in   │
-│                          metadata order.                                     │
-│ --delete-exisiting-whls  If True, delete existing *.whl files in each        │
-│                          project's dist folder before running uv build       │
-│                          --wheel. [default: True]                            │
+│ --working-directory  Set the current working directory.                      │
+│ --name               Optional member project names to build. If omitted, all │
+│                      workspace projects from metadata are built in metadata  │
+│                      order.                                                  │
+│ --out-dir            Destination directory for built artifacts. Builds are   │
+│                      performed in a temporary directory first, then copied   │
+│                      into this directory with overwrite semantics. [default: │
+│                      dist]                                                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 <!-- END:cmd -->

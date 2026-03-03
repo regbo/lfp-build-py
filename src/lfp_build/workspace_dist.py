@@ -1,4 +1,5 @@
 import pathlib
+import re
 import shutil
 import tempfile
 
@@ -16,6 +17,9 @@ members and runs `uv build --wheel` in each project directory.
 
 LOG = logs.logger(__name__)
 app = App()
+_WHEEL_NAME_RE = re.compile(
+    r"^(?P<dist>[^-]+)-(?P<version>[^-]+)(?:-[^-]+)?-[^-]+-[^-]+-[^-]+\.whl$"
+)
 
 
 @app.default
@@ -84,7 +88,36 @@ def _copy_overwrite(source_dir: pathlib.Path, destination_dir: pathlib.Path) -> 
         relative_path = source_path.relative_to(source_dir)
         destination_path = destination_dir / relative_path
         destination_path.parent.mkdir(parents=True, exist_ok=True)
-        if destination_path.exists():
+        if source_path.suffix == ".whl":
+            wheel_dist_name = _wheel_distribution_name(source_path.name)
+            if wheel_dist_name is not None:
+                _delete_matching_distribution_wheels(
+                    destination_dir=destination_path.parent,
+                    wheel_dist_name=wheel_dist_name,
+                )
+        elif destination_path.exists():
             destination_path.unlink()
         shutil.copy2(source_path, destination_path)
+
+
+def _wheel_distribution_name(filename: str) -> str | None:
+    """
+    Extract normalized wheel distribution name from a wheel filename.
+    """
+    match = _WHEEL_NAME_RE.match(filename)
+    if match is None:
+        return None
+    return match.group("dist")
+
+
+def _delete_matching_distribution_wheels(
+    destination_dir: pathlib.Path, wheel_dist_name: str
+) -> None:
+    """
+    Delete existing wheel files for the same distribution in destination_dir.
+    """
+    for existing_wheel in destination_dir.glob("*.whl"):
+        existing_dist_name = _wheel_distribution_name(existing_wheel.name)
+        if existing_dist_name == wheel_dist_name:
+            existing_wheel.unlink()
 
