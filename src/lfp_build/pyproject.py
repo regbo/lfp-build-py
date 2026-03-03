@@ -3,6 +3,7 @@ import hashlib
 import logging
 import pathlib
 import shutil
+import subprocess
 from dataclasses import dataclass, field
 from tempfile import NamedTemporaryFile
 from typing import Any, Collection, Mapping
@@ -303,19 +304,36 @@ def _format(path: pathlib.Path):
     if taplo_commands := _taplo_commands():
         program = taplo_commands[0]
         args = taplo_commands[1:]
-        args.extend(
-            [
+        format_command = [
+            "fmt",
+            "--option",
+            f"allowed_blank_lines={_MAX_BLANK_LINES}",
+            "--option",
+            f"indent_string={_INDENT}",
+            path.absolute(),
+        ]
+        try:
+            util.process_run(
+                program,
+                *args,
+                *format_command,
+                program_name="taplo",
+                stdout_log_level=logging.DEBUG,
+            )
+        except subprocess.CalledProcessError:
+            # Some taplo distributions fail on formatter options.
+            # Retry without options so project creation can still proceed.
+            LOG.warning(
+                "Taplo formatter options failed. Retrying with default taplo formatting."
+            )
+            util.process_run(
+                program,
+                *args,
                 "fmt",
-                "--option",
-                f"allowed_blank_lines={_MAX_BLANK_LINES}",
-                "--option",
-                f"indent_string={_INDENT}",
                 path.absolute(),
-            ]
-        )
-        util.process_run(
-            program, *args, program_name="taplo", stdout_log_level=logging.DEBUG
-        )
+                program_name="taplo",
+                stdout_log_level=logging.DEBUG,
+            )
     else:
         program = "tombi"
         util.process_run(
