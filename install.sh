@@ -5,6 +5,21 @@ LFP_BUILD_REPO_URL_DEFAULT="https://github.com/regbo/lfp-build-py.git"
 # NOTE: The package metadata name is "lfp-build" (not "lfp-build-py").
 LFP_BUILD_SPEC_DEFAULT="lfp-build @ git+${LFP_BUILD_REPO_URL_DEFAULT}"
 
+EMIT_ENV=0
+for arg in "$@"; do
+  case "${arg}" in
+    --emit-env) EMIT_ENV=1 ;;
+  esac
+done
+
+# In --emit-env mode, send all normal output to stderr and only print shell
+# exports to original stdout. This enables one-liners like:
+#   eval "$(curl -fsSL .../install.sh | bash -s -- --emit-env)"
+exec 3>&1
+if [ "${EMIT_ENV}" -eq 1 ]; then
+  exec 1>&2
+fi
+
 ensure_home() {
   if [ -n "${HOME:-}" ] && [ -d "${HOME}" ]; then
     return 0
@@ -171,4 +186,15 @@ echo "Try:"
 echo "  lfp-build --help"
 echo "If that is not found, run:"
 echo "  export PATH=\"${HOME}/.local/bin:$(command -v uv >/dev/null 2>&1 && uv tool dir --bin 2>/dev/null || true):\$PATH\""
+
+if [ "${EMIT_ENV}" -eq 1 ]; then
+  tool_bin="$(command -v uv >/dev/null 2>&1 && uv tool dir --bin 2>/dev/null || true)"
+  path_out="${HOME}/.local/bin"
+  if [ -n "${tool_bin}" ]; then
+    path_out="${path_out}:${tool_bin}"
+  fi
+  printf 'export HOME=%q\n' "${HOME}" >&3
+  printf 'export PATH=%q\n' "${path_out}:\$PATH" >&3
+  printf 'hash -r\n' >&3
+fi
 
