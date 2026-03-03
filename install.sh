@@ -185,16 +185,25 @@ fi
 echo "Try:"
 echo "  lfp-build --help"
 echo "If that is not found, run:"
-echo "  export PATH=\"${HOME}/.local/bin:$(command -v uv >/dev/null 2>&1 && uv tool dir --bin 2>/dev/null || true):\$PATH\""
+tool_bin_hint="$(command -v uv >/dev/null 2>&1 && uv tool dir --bin 2>/dev/null || true)"
+path_hint="${HOME}/.local/bin"
+if [ -n "${tool_bin_hint}" ] && [ "${tool_bin_hint}" != "${path_hint}" ]; then
+  path_hint="${path_hint}:${tool_bin_hint}"
+fi
+echo "  export PATH=\"${path_hint}:\$PATH\""
 
 if [ "${EMIT_ENV}" -eq 1 ]; then
   tool_bin="$(command -v uv >/dev/null 2>&1 && uv tool dir --bin 2>/dev/null || true)"
-  path_out="${HOME}/.local/bin"
-  if [ -n "${tool_bin}" ]; then
-    path_out="${path_out}:${tool_bin}"
+
+  path_prefix="${HOME}/.local/bin"
+  if [ -n "${tool_bin}" ] && [ "${tool_bin}" != "${path_prefix}" ]; then
+    path_prefix="${path_prefix}:${tool_bin}"
   fi
+  path_prefix="${path_prefix}:"
+
   printf 'export HOME=%q\n' "${HOME}" >&3
-  printf 'export PATH=%q\n' "${path_out}:\$PATH" >&3
+  # Important: do not escape $PATH or it becomes a literal string and breaks the shell.
+  printf 'export PATH=%s:"$PATH"\n' "$(printf '%q' "${path_prefix}")" >&3
   printf 'hash -r\n' >&3
 fi
 
