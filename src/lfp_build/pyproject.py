@@ -303,44 +303,65 @@ def _format(path: pathlib.Path):
     or when taplo formatting fails.
     """
     if taplo_commands := _taplo_commands():
-        program = taplo_commands[0]
-        args = taplo_commands[1:]
-        format_command = [
-            "fmt",
-            "--option",
-            f"allowed_blank_lines={_MAX_BLANK_LINES}",
-            "--option",
-            f"indent_string={_INDENT}",
-            path.absolute(),
-        ]
-        try:
-            util.process_run(
-                program,
-                *args,
-                *format_command,
-                program_name="taplo",
-                stdout_log_level=logging.DEBUG,
-            )
-        except subprocess.CalledProcessError:
-            # Some taplo distributions fail on formatter options.
-            # Retry without options so project creation can still proceed.
+        # Some taplo distributions fail on formatter options.
+        # Retry without options so project creation can still proceed.
+        if not _format_with_taplo(path, taplo_commands=taplo_commands, use_options=True):
             LOG.warning(
                 "Taplo formatter options failed. Retrying with default taplo formatting."
             )
-            try:
-                util.process_run(
-                    program,
-                    *args,
-                    "fmt",
-                    path.absolute(),
-                    program_name="taplo",
-                    stdout_log_level=logging.DEBUG,
-                )
-            except subprocess.CalledProcessError:
+            if not _format_with_taplo(
+                path, taplo_commands=taplo_commands, use_options=False
+            ):
                 LOG.warning("Taplo formatting failed. Falling back to tombi formatting.")
                 _format_with_tombi(path)
     else:
         _format_with_tombi(path)
+
+
+def _format_with_taplo(
+    path: pathlib.Path, taplo_commands: list[str], use_options: bool
+) -> bool:
+    """
+    Format a TOML file with taplo.
+
+    Args:
+        path: Path to TOML file to format.
+        taplo_commands: Command prefix used to invoke taplo.
+        use_options: If True, include formatter options. If False, use defaults.
+
+    Returns:
+        True when formatting succeeds, otherwise False.
+    """
+    program = taplo_commands[0]
+    args = taplo_commands[1:]
+    command: list[str | pathlib.Path] = ["fmt"]
+    if use_options:
+        command.extend(
+            [
+                "--option",
+                f"allowed_blank_lines={_MAX_BLANK_LINES}",
+                "--option",
+                f"indent_string={_INDENT}",
+            ]
+        )
+    command.append(path.absolute())
+    try:
+        util.process_run(
+            program,
+            *args,
+            *command,
+            program_name="taplo",
+            stdout_log_level=logging.DEBUG,
+        )
+        return True
+    except subprocess.CalledProcessError as exc:
+        LOG.debug(
+            "Taplo formatting command failed. returncode=%s cmd=%s",
+            exc.returncode,
+            exc.cmd,
+            exc_info=exc,
+        )
+        return False
 
 
 def _format_with_tombi(path: pathlib.Path):

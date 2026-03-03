@@ -3,6 +3,7 @@ import json
 import os
 import pathlib
 import re
+import subprocess
 from dataclasses import dataclass
 
 from lfp_logging import logs
@@ -140,7 +141,16 @@ def _metadata_uv(cwd: pathlib.Path) -> Metadata:
     The result is cached to avoid redundant subprocess calls.
     """
     args = ["uv", "workspace", "metadata"]
-    data = json.loads(util.process_run(*args, cwd=cwd))
+    env = dict(os.environ)
+    # Workspace metadata is a preview feature in some uv versions.
+    env.setdefault("UV_PREVIEW", "1")
+    stdout = util.process_run(*args, cwd=cwd, env=env, check=False)
+    try:
+        data = json.loads(stdout) if stdout else None
+    except json.JSONDecodeError as e:
+        raise ValueError(f"uv workspace metadata returned non-JSON output: {stdout}") from e
+    if not data:
+        raise subprocess.CalledProcessError(returncode=2, cmd=args)
     workspace_root = pathlib.Path(data["workspace_root"])
     members: list[MetadataMember] = []
     for member in data["members"]:

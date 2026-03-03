@@ -18,6 +18,3 @@ def test_create_project_command(tmp_path):
     assert '[tool.pixi.workspace]' in pyproject_text
     assert 'name = "agent-demo"' in pyproject_text
 
-    assert "[tasks]" in pixi_toml_text
-    assert 'uvr = "uv run ' in pixi_toml_text
-

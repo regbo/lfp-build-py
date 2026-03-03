@@ -1,5 +1,6 @@
 import os
 import pathlib
+import shutil
 import textwrap
 from typing import Annotated
 
@@ -223,6 +224,10 @@ def project(
         list[str] | None,
         cyclopts.Parameter(alias="-d", negative=""),
     ] = None,
+    force: Annotated[
+        bool,
+        cyclopts.Parameter(alias="-f", negative=""),
+    ] = False,
 ) -> None:
     """
     Create a new workspace root project.
@@ -238,11 +243,16 @@ def project(
         Parent directory to create the workspace in.
     dependency
         Additional dependency strings to add to the `common` member package.
+    force
+        If True, remove an existing target directory before creating the project.
     """
     parent = path.resolve()
     project_dir = parent / name
     if project_dir.exists():
-        raise ValueError(f"Project already exists: {project_dir}")
+        if force:
+            shutil.rmtree(project_dir, ignore_errors=True)
+        else:
+            raise ValueError(f"Project already exists: {project_dir}")
     project_dir.mkdir(parents=True, exist_ok=False)
 
     repo_url = _lfp_build_repo_url()
