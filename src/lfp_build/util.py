@@ -50,7 +50,7 @@ def process_start(
 
     proc: subprocess.Popen[str] | None = None
     errors: list[BaseException] = []
-    for prefix in (None, ["uvx", "run"]):
+    for prefix in (None, ["uvx"]):
         commands = base_commands if prefix is None else [*prefix, *base_commands]
         try:
             proc = subprocess.Popen(
