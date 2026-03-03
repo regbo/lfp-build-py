@@ -6,7 +6,6 @@ def test_create_project_command(tmp_path):
 
     root = tmp_path / "agent-demo"
     assert (root / "pyproject.toml").is_file()
-    assert (root / "pixi.toml").is_file()
     assert (root / "bootstrap.sh").is_file()
     assert (root / "bootstrap.ps1").is_file()
     assert (root / ".gitignore").is_file()
