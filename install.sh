@@ -43,6 +43,32 @@ ensure_tool_bin_path() {
   fi
 }
 
+install_git_system() {
+  if command -v apk >/dev/null 2>&1; then
+    apk add --no-cache git
+    return 0
+  fi
+  if command -v apt-get >/dev/null 2>&1; then
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -y
+    apt-get install -y git
+    return 0
+  fi
+  if command -v microdnf >/dev/null 2>&1; then
+    microdnf install -y git
+    return 0
+  fi
+  if command -v dnf >/dev/null 2>&1; then
+    dnf install -y git
+    return 0
+  fi
+  if command -v yum >/dev/null 2>&1; then
+    yum install -y git
+    return 0
+  fi
+  return 1
+}
+
 install_pixi() {
   if command -v pixi >/dev/null 2>&1; then
     return 0
@@ -66,16 +92,32 @@ install_uv() {
 }
 
 install_git() {
-  if command -v git >/dev/null 2>&1; then
+  if command -v git >/dev/null 2>&1 && git --version >/dev/null 2>&1; then
     return 0
   fi
+
+  # Prefer system package managers first because conda-forge binaries may not
+  # run on minimal/musl containers (e.g. Alpine).
+  if install_git_system; then
+    if command -v git >/dev/null 2>&1 && git --version >/dev/null 2>&1; then
+      return 0
+    fi
+  fi
+
   if ! command -v pixi >/dev/null 2>&1; then
     return 1
   fi
 
   # Install git via pixi global tools. With PIXI_HOME set to $HOME/.local,
   # binaries land in $HOME/.local/bin.
-  pixi global install --channel conda-forge git
+  pixi global install --channel conda-forge git || true
+
+  if command -v git >/dev/null 2>&1 && git --version >/dev/null 2>&1; then
+    return 0
+  fi
+
+  echo "WARNING: git is still not functional. Install git via your OS package manager." >&2
+  return 1
 }
 
 install_lfp_build() {
@@ -112,7 +154,21 @@ install_git
 install_lfp_build
 activate_pixi_shell_hook
 
-echo "lfp-build is installed. Try: lfp-build --help"
-echo "If 'lfp-build' is not found, add these to PATH:"
+echo "lfp-build is installed."
+
+# Make it runnable without requiring the user to export PATH (best effort).
+if command -v uv >/dev/null 2>&1; then
+  tool_bin="$(uv tool dir --bin 2>/dev/null || true)"
+  if [ -n "${tool_bin}" ] && [ -x "${tool_bin}/lfp-build" ]; then
+    mkdir -p /usr/local/bin 2>/dev/null || true
+    if [ -w /usr/local/bin ] && [ ! -e /usr/local/bin/lfp-build ]; then
+      ln -s "${tool_bin}/lfp-build" /usr/local/bin/lfp-build 2>/dev/null || true
+    fi
+  fi
+fi
+
+echo "Try:"
+echo "  lfp-build --help"
+echo "If that is not found, run:"
 echo "  export PATH=\"${HOME}/.local/bin:$(command -v uv >/dev/null 2>&1 && uv tool dir --bin 2>/dev/null || true):\$PATH\""
 

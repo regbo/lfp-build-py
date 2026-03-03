@@ -76,6 +76,9 @@ Linux/macOS:
 curl -fsSL https://raw.githubusercontent.com/regbo/lfp-build-py/main/install.sh | bash
 ```
 
+Note: piping to `bash` runs in a subprocess, so PATH updates will not persist in your current shell. If `lfp-build`
+is not found after install, follow the script's printed `export PATH=...` line.
+
 Windows PowerShell:
 
 ```powershell
