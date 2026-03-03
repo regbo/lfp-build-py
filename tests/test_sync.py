@@ -1,6 +1,6 @@
 import pathlib
 
-from lfp_build import pyproject, workspace_create, workspace_sync
+from lfp_build import _config, pyproject, workspace_create, workspace_sync
 
 
 def test_workspace_create_project(temp_workspace):
@@ -10,7 +10,7 @@ def test_workspace_create_project(temp_workspace):
 
     expected_path = temp_workspace / "packages" / project_name
     assert expected_path.exists()
-    assert (expected_path / "pyproject.toml").exists()
+    assert (expected_path / _config.PYROJECT_FILE_NAME).exists()
     assert (expected_path / "src" / "new_pkg" / "__init__.py").exists()
 
 
@@ -19,7 +19,7 @@ def test_workspace_sync(temp_workspace):
     # Create a member project manually
     pkg_dir = temp_workspace / "packages" / "pkg1"
     pkg_dir.mkdir(parents=True)
-    (pkg_dir / "pyproject.toml").write_text("""
+    (pkg_dir / _config.PYROJECT_FILE_NAME).write_text("""
 [project]
 name = "pkg1"
 version = "0.0.0"
@@ -29,7 +29,7 @@ version = "0.0.0"
     workspace_sync.sync()
 
     # Check if build-system was synced from root
-    pkg_proj = pyproject.PyProject(pkg_dir / "pyproject.toml")
+    pkg_proj = pyproject.PyProject(pkg_dir / _config.PYROJECT_FILE_NAME)
     assert "build-system" in pkg_proj.data
     assert pkg_proj.data["build-system"]["build-backend"] == "hatchling.build"
 
@@ -41,7 +41,7 @@ def test_workspace_sync_version_without_git_repo(tmp_path, monkeypatch):
     """Test that version syncing does not fail outside a git repo."""
     proj_dir = tmp_path / "proj"
     proj_dir.mkdir(parents=True)
-    pyproject_path = proj_dir / "pyproject.toml"
+    pyproject_path = proj_dir / _config.PYROJECT_FILE_NAME
     pyproject_path.write_text(
         """
 [project]

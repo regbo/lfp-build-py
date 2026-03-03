@@ -1,14 +1,14 @@
 import subprocess
 
 from lfp_logging import logs
-from lfp_build import workspace
+from lfp_build import _config, workspace
 
 LOG = logs.logger(__name__)
 
 
 def _read_pyprojects(root) -> dict[str, str]:
     out: dict[str, str] = {}
-    for p in root.rglob("pyproject.toml"):
+    for p in root.rglob(_config.PYROJECT_FILE_NAME):
         try:
             out[str(p.relative_to(root))] = p.read_text()
         except Exception as e:
@@ -38,7 +38,7 @@ def test_metadata_repairs_missing_workspace_sources(tmp_path, monkeypatch):
     (root / "packages" / "a").mkdir(parents=True)
     (root / "packages" / "b").mkdir(parents=True)
 
-    (root / "pyproject.toml").write_text(
+    (root / _config.PYROJECT_FILE_NAME).write_text(
         """
 [project]
 name = "root-proj"
@@ -49,7 +49,7 @@ members = ["packages/*"]
 """
     )
 
-    (root / "packages" / "a" / "pyproject.toml").write_text(
+    (root / "packages" / "a" / _config.PYROJECT_FILE_NAME).write_text(
         """
 [project]
 name = "a"
@@ -57,7 +57,7 @@ version = "0.0.0"
 dependencies = ["b"]
 """
     )
-    (root / "packages" / "b" / "pyproject.toml").write_text(
+    (root / "packages" / "b" / _config.PYROJECT_FILE_NAME).write_text(
         """
 [project]
 name = "b"
@@ -88,7 +88,7 @@ version = "0.0.0"
     assert {"root-proj", "a", "b"}.issubset(names)
 
     # Verify that member 'a' had its uv workspace resolution repaired.
-    a_text = (root / "packages" / "a" / "pyproject.toml").read_text()
+    a_text = (root / "packages" / "a" / _config.PYROJECT_FILE_NAME).read_text()
     assert "file://${PROJECT_ROOT}/../b" in a_text
     assert "workspace = true" in a_text
 
@@ -99,7 +99,7 @@ def test_metadata_rolls_back_repairs_on_error(tmp_path, monkeypatch):
     (root / "packages" / "a").mkdir(parents=True)
     (root / "packages" / "b").mkdir(parents=True)
 
-    (root / "pyproject.toml").write_text(
+    (root / _config.PYROJECT_FILE_NAME).write_text(
         """
 [project]
 name = "root-proj"
@@ -110,7 +110,7 @@ members = ["packages/*"]
 """
     )
 
-    a_pyproject = root / "packages" / "a" / "pyproject.toml"
+    a_pyproject = root / "packages" / "a" / _config.PYROJECT_FILE_NAME
     a_pyproject.write_text(
         """
 [project]
@@ -119,7 +119,7 @@ version = "0.0.0"
 dependencies = ["b"]
 """
     )
-    (root / "packages" / "b" / "pyproject.toml").write_text(
+    (root / "packages" / "b" / _config.PYROJECT_FILE_NAME).write_text(
         """
 [project]
 name = "b"
