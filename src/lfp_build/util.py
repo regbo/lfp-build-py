@@ -46,16 +46,37 @@ def process_start(
     Yields:
         Lines from stdout as they are produced
     """
-    commands = [str(c) for c in [program, *args]]
-    proc = subprocess.Popen(
-        commands,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL if stderr_log_level is None else subprocess.PIPE,
-        text=True,
-        cwd=cwd,
-        env=env,
-        bufsize=1,
-    )
+    base_commands = [str(c) for c in [program, *args]]
+
+    proc: subprocess.Popen[str] | None = None
+    errors: list[BaseException] = []
+    for prefix in (None, ["uvx", "run"]):
+        commands = base_commands if prefix is None else [*prefix, *base_commands]
+        try:
+            proc = subprocess.Popen(
+                commands,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL
+                if stderr_log_level is None
+                else subprocess.PIPE,
+                text=True,
+                cwd=cwd,
+                env=env,
+                bufsize=1,
+            )
+            break
+        except FileNotFoundError as e:
+            errors.append(e)
+            proc = None
+            continue
+
+    if proc is None:
+        raise FileNotFoundError(
+            "Failed to start process. Tried direct execution and `uvx run` fallback. "
+            f"direct_error={errors[0]!r} uvx_error={errors[1]!r}"
+        )
+
+    commands = list(proc.args) if isinstance(proc.args, (list, tuple)) else [str(proc.args)]
 
     def _read_stream(stream) -> Iterator[str]:
         for line in stream:
