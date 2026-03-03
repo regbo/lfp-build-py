@@ -2,7 +2,8 @@
 set -euo pipefail
 
 LFP_BUILD_REPO_URL_DEFAULT="https://github.com/regbo/lfp-build-py.git"
-LFP_BUILD_SPEC_DEFAULT="lfp-build-py @ git+${LFP_BUILD_REPO_URL_DEFAULT}"
+# NOTE: The package metadata name is "lfp-build" (not "lfp-build-py").
+LFP_BUILD_SPEC_DEFAULT="lfp-build @ git+${LFP_BUILD_REPO_URL_DEFAULT}"
 
 ensure_home() {
   if [ -n "${HOME:-}" ] && [ -d "${HOME}" ]; then
