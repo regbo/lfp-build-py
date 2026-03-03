@@ -9,7 +9,7 @@ dependencies = [
     "ruff",
     "tomlkit",
     "cyclopts",
-    "lfp_logging @ git+https://github.com/regbo/lfp-logging-py.git",
+    "lfp-logging @ git+https://github.com/regbo/lfp-logging-py.git",
     "python-dotenv",
     "sitecustomize-entrypoints",
 ]

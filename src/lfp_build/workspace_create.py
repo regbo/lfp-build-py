@@ -263,7 +263,7 @@ uvm = "uv run -m "
     try:
         os.chdir(project_dir)
         common_deps = [
-            "lfp_logging @ git+https://github.com/regbo/lfp-logging-py.git",
+            "lfp-logging @ git+https://github.com/regbo/lfp-logging-py.git",
             *(dependency or []),
         ]
         member("common", path=_PATH, dependency=common_deps)
