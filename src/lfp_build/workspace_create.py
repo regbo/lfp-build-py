@@ -215,8 +215,8 @@ default = {{ solve-group = "default" }}
 dev = {{ features = ["dev"], solve-group = "default" }}
 
 [tool.pixi.tasks]
-uvr = "uv run "
-uvm = "uv run -m "
+uvr = "uv run"
+uvm = "uv run -m"
 """
     )
 
