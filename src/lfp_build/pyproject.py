@@ -93,6 +93,8 @@ class PyProject:
             except Exception as e:
                 LOG.warning("TOML formatting failed; writing unformatted file. err=%s", e)
 
+            _normalize_line_endings(temp_path)
+
             # Only overwrite if the formatted output actually differs
             if hash != _hash(temp_path):
                 # Use replace so overwrite works on Windows where rename
@@ -395,6 +397,20 @@ def _is_windows() -> bool:
     Determine if the current process runs on Windows.
     """
     return os.name == "nt"
+
+
+def _normalize_line_endings(path: pathlib.Path):
+    """
+    Normalize a TOML file to LF newlines.
+
+    Pixi's parser can fail on some Windows CRLF outputs for pyproject.toml.
+    Normalizing here makes persisted files consistently parseable.
+    """
+    contents = path.read_bytes()
+    normalized_contents = contents.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    if normalized_contents != contents:
+        # Rewrite only when content changed to avoid unnecessary disk churn.
+        path.write_bytes(normalized_contents)
 
 
 def _format_with_tombi(path: pathlib.Path):
