@@ -299,7 +299,8 @@ def _format(path: pathlib.Path):
     Apply formatting to a TOML file.
 
     Attempts to use 'taplo' if available (either globally or via 'uv tool run').
-    Falls back to 'tombi' via 'uv tool run' if taplo is not found.
+    Falls back to 'tombi' via 'uv tool run' when taplo is not available
+    or when taplo formatting fails.
     """
     if taplo_commands := _taplo_commands():
         program = taplo_commands[0]
@@ -326,27 +327,38 @@ def _format(path: pathlib.Path):
             LOG.warning(
                 "Taplo formatter options failed. Retrying with default taplo formatting."
             )
-            util.process_run(
-                program,
-                *args,
-                "fmt",
-                path.absolute(),
-                program_name="taplo",
-                stdout_log_level=logging.DEBUG,
-            )
+            try:
+                util.process_run(
+                    program,
+                    *args,
+                    "fmt",
+                    path.absolute(),
+                    program_name="taplo",
+                    stdout_log_level=logging.DEBUG,
+                )
+            except subprocess.CalledProcessError:
+                LOG.warning("Taplo formatting failed. Falling back to tombi formatting.")
+                _format_with_tombi(path)
     else:
-        program = "tombi"
-        util.process_run(
-            "uv",
-            "tool",
-            "run",
-            "--",
-            program,
-            "format",
-            path.absolute(),
-            program_name=program,
-            stdout_log_level=logging.DEBUG,
-        )
+        _format_with_tombi(path)
+
+
+def _format_with_tombi(path: pathlib.Path):
+    """
+    Format a TOML file with tombi through uv tool run.
+    """
+    program = "tombi"
+    util.process_run(
+        "uv",
+        "tool",
+        "run",
+        "--",
+        program,
+        "format",
+        path.absolute(),
+        program_name=program,
+        stdout_log_level=logging.DEBUG,
+    )
 
 
 @functools.cache
