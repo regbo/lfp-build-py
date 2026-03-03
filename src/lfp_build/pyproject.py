@@ -1,6 +1,7 @@
 import functools
 import hashlib
 import logging
+import os
 import pathlib
 import shutil
 import subprocess
@@ -87,7 +88,10 @@ class PyProject:
                 # No in-memory changes, just format existing file
                 shutil.copy(self.path, temp_path)
 
-            _format(temp_path)
+            try:
+                _format(temp_path)
+            except Exception as e:
+                LOG.warning("TOML formatting failed; writing unformatted file. err=%s", e)
 
             # Only overwrite if the formatted output actually differs
             if hash != _hash(temp_path):
@@ -300,7 +304,8 @@ def _format(path: pathlib.Path):
 
     Attempts to use 'taplo' if available (either globally or via 'uv tool run').
     Falls back to 'tombi' via 'uv tool run' when taplo is not available
-    or when taplo formatting fails.
+    or when taplo formatting fails. On Windows, tombi fallback is skipped
+    to avoid tool startup hangs.
     """
     if taplo_commands := _taplo_commands():
         # Some taplo distributions fail on formatter options.
@@ -312,10 +317,24 @@ def _format(path: pathlib.Path):
             if not _format_with_taplo(
                 path, taplo_commands=taplo_commands, use_options=False
             ):
-                LOG.warning("Taplo formatting failed. Falling back to tombi formatting.")
-                _format_with_tombi(path)
+                if _is_windows():
+                    LOG.warning(
+                        "Taplo formatting failed on Windows. "
+                        "Skipping tombi fallback and leaving TOML unformatted."
+                    )
+                else:
+                    LOG.warning(
+                        "Taplo formatting failed. Falling back to tombi formatting."
+                    )
+                    _format_with_tombi(path)
     else:
-        _format_with_tombi(path)
+        if _is_windows():
+            LOG.warning(
+                "Taplo unavailable on Windows. "
+                "Skipping tombi fallback and leaving TOML unformatted."
+            )
+        else:
+            _format_with_tombi(path)
 
 
 def _format_with_taplo(
@@ -345,6 +364,11 @@ def _format_with_taplo(
             ]
         )
     command.append(path.absolute())
+    LOG.debug(
+        "Running taplo formatter command. use_options=%s cmd=%s",
+        use_options,
+        [program, *args, *[str(part) for part in command]],
+    )
     try:
         util.process_run(
             program,
@@ -362,6 +386,13 @@ def _format_with_taplo(
             exc_info=exc,
         )
         return False
+
+
+def _is_windows() -> bool:
+    """
+    Determine if the current process runs on Windows.
+    """
+    return os.name == "nt"
 
 
 def _format_with_tombi(path: pathlib.Path):
