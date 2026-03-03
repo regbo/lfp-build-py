@@ -141,8 +141,7 @@ uv run lfp-build create my-api \
 # Create in a specific path within the workspace
 uv run lfp-build create my-project --path /path/to/parent
 
-# Create a new workspace root project (writes root pyproject.toml, adds bootstrap scripts,
-# creates packages/common)
+# Create a new workspace root project (writes root pyproject.toml and creates packages/common)
 uv run lfp-build create project agent-demo
 ```
 
@@ -159,7 +158,6 @@ Created projects include:
 - `lfp-build create project` bootstraps a new workspace root project with:
   - a minimal root `pyproject.toml` configured for uv and pixi
   - `packages/common` created as an initial member
-  - `bootstrap.sh` and `bootstrap.ps1` for curl or wget or irm or iex style setup
   - a copied `.gitignore` from this repository if the target project does not already have one
 
 ### Sync
@@ -352,7 +350,7 @@ Interface for uv workspace metadata retrieval.
 
 ### workspace_create.py
 
-Utilities for bootstrapping new workspace member projects.
+Utilities for creating new workspace member projects.
 
 ### workspace_sync.py
 

@@ -1,7 +1,6 @@
 import os
 import pathlib
 import shutil
-import textwrap
 from typing import Annotated
 
 import cyclopts
@@ -14,51 +13,12 @@ from lfp_build import _config, pyproject, util, workspace, workspace_sync
 """
 Utilities for creating workspace member projects.
 
-Provides a command to bootstrap new member projects within a uv workspace,
+Provides a command to create new member projects within a uv workspace,
 setting up the directory structure, package layout, and dependencies.
 """
 
 LOG = logs.logger(__name__)
 _PATH = pathlib.Path("packages")
-
-BOOTSTRAP_SH = textwrap.dedent(
-    """\
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    # Install pixi if missing
-    if ! command -v pixi >/dev/null 2>&1; then
-      curl -fsSL https://pixi.sh/install.sh | sh
-      export PATH="$HOME/.pixi/bin:$PATH"
-    fi
-
-    # Install uv if missing (uvx/uv tool live here)
-    if ! command -v uv >/dev/null 2>&1; then
-      curl -LsSf https://astral.sh/uv/install.sh | sh
-      export PATH="$HOME/.cargo/bin:$PATH"
-    fi
-
-    uv tool install "{lfp_build_dep}"
-    """
-)
-
-BOOTSTRAP_PS1 = textwrap.dedent(
-    """\
-    # Usage:
-    #   irm -useb <RAW_URL>/bootstrap.ps1 | iex
-
-    if (-not (Get-Command pixi -ErrorAction SilentlyContinue)) {{
-      powershell -ExecutionPolicy Bypass -c "irm -useb https://pixi.sh/install.ps1 | iex"
-    }}
-
-    if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {{
-      powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-    }}
-
-    uv tool install "{lfp_build_dep}"
-    """
-)
-
 
 app = App()
 
@@ -232,7 +192,7 @@ def project(
     """
     Create a new workspace root project.
 
-    Writes a minimal root `pyproject.toml`, bootstraps pixi configuration,
+    Writes a minimal root `pyproject.toml`, configures pixi settings,
     and creates a `common` member package under `packages/`.
 
     Parameters
@@ -296,17 +256,6 @@ uvm = "uv run -m "
     )
 
     (project_dir / "packages").mkdir(exist_ok=True)
-
-    bootstrap_sh = project_dir / "bootstrap.sh"
-    bootstrap_sh.write_text(BOOTSTRAP_SH.format(lfp_build_dep=lfp_build_dep))
-    try:
-        bootstrap_sh.chmod(bootstrap_sh.stat().st_mode | 0o111)
-    except OSError:
-        pass
-
-    (project_dir / "bootstrap.ps1").write_text(
-        BOOTSTRAP_PS1.format(lfp_build_dep=lfp_build_dep)
-    )
 
     _copy_repo_gitignore(project_dir)
 
