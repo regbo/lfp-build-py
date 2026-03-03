@@ -21,10 +21,13 @@ ensure_home() {
   mkdir -p "${HOME}"
 }
 
-ensure_home
-
-mkdir -p "${HOME}/.local/bin"
-export PATH="${HOME}/.local/bin:${PATH}"
+ensure_bin_path() {
+  mkdir -p "${HOME}/.local/bin"
+  case ":${PATH}:" in
+    *":${HOME}/.local/bin:"*) ;;
+    *) export PATH="${HOME}/.local/bin:${PATH}" ;;
+  esac
+}
 
 install_pixi() {
   if command -v pixi >/dev/null 2>&1; then
@@ -52,6 +55,19 @@ install_uv() {
   fi
 }
 
+install_git() {
+  if command -v git >/dev/null 2>&1; then
+    return 0
+  fi
+  if ! command -v pixi >/dev/null 2>&1; then
+    return 1
+  fi
+
+  # Install git via pixi global tools. With PIXI_HOME set to $HOME/.local,
+  # binaries land in $HOME/.local/bin.
+  pixi global install --channel conda-forge git
+}
+
 install_lfp_build() {
   local spec="${LFP_BUILD_SPEC:-${LFP_BUILD_SPEC_DEFAULT}}"
   uv tool install "${spec}"
@@ -71,8 +87,11 @@ activate_pixi_shell_hook() {
   fi
 }
 
+ensure_home
+ensure_bin_path
 install_pixi
 install_uv
+install_git
 install_lfp_build
 activate_pixi_shell_hook
 

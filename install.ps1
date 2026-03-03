@@ -24,11 +24,21 @@ function Ensure-Home {
     return $env:HOME
 }
 
-$homeDir = Ensure-Home
+function Ensure-BinPath {
+    param([string]$HomeDir)
 
-$localBin = Join-Path $homeDir ".local\bin"
-New-Item -ItemType Directory -Force -Path $localBin | Out-Null
-$env:PATH = "$localBin;$env:PATH"
+    $localBin = Join-Path $HomeDir ".local\bin"
+    New-Item -ItemType Directory -Force -Path $localBin | Out-Null
+
+    if ($env:PATH -notlike "*$localBin*") {
+        $env:PATH = "$localBin;$env:PATH"
+    }
+
+    return $localBin
+}
+
+$homeDir = Ensure-Home
+$localBin = Ensure-BinPath -HomeDir $homeDir
 
 function Install-Pixi {
     if (Get-Command pixi -ErrorAction SilentlyContinue) {
@@ -60,6 +70,19 @@ function Install-Uv {
     }
 }
 
+function Install-Git {
+    if (Get-Command git -ErrorAction SilentlyContinue) {
+        return
+    }
+    if (-not (Get-Command pixi -ErrorAction SilentlyContinue)) {
+        throw "pixi is required to install git"
+    }
+
+    # Install git via pixi global tools. With PIXI_HOME set to $HOME\.local,
+    # binaries land in $HOME\.local\bin.
+    pixi global install --channel conda-forge git
+}
+
 function Install-LfpBuild {
     $spec = $env:LFP_BUILD_SPEC
     if (-not $spec) { $spec = $LfpBuildSpecDefault }
@@ -86,6 +109,7 @@ function Activate-PixiShellHook {
 
 Install-Pixi
 Install-Uv
+Install-Git
 Install-LfpBuild
 Activate-PixiShellHook
 

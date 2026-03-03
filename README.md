@@ -66,6 +66,7 @@ They will:
 - Ensure a usable `HOME` exists (fallback to `/home/app`, then `/home`, then `/tmp/home`)
 - Install `pixi` into `$HOME/.local/bin` (using `PIXI_HOME` and `PIXI_BIN_DIR`)
 - Install `uv` if missing
+- Install `git` if missing (via `pixi global install --channel conda-forge git`)
 - Install `lfp-build` as a uv tool
 - Run the pixi shell activation hook (best effort)
 
