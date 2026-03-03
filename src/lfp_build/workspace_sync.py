@@ -11,7 +11,7 @@ from cyclopts import App
 from lfp_logging import logs
 from mergedeep import merge
 
-from lfp_build import pyproject, util
+from lfp_build import pyproject, util, workspace
 from lfp_build.pyproject import PyProject, PyProjectTree
 
 """
@@ -223,14 +223,18 @@ def _sync_member_project_dependencies(pyproject_tree: PyProjectTree, proj: PyPro
     dependencies = proj.data.get("project", {}).get("dependencies", [])
     if dependencies:
         for idx, dependency in enumerate(dependencies):
-            dep = _parse_dependency_name(dependencies[idx])
+            dep = workspace.parse_dependency_name(str(dependencies[idx]))
             dep_proj = (
                 pyproject_tree.root
                 if dep == pyproject_tree.name
                 else pyproject_tree.members.get(dep, None)
             )
             if dep_proj:
-                dependencies[idx] = _member_dependency(proj, dep, dep_proj)
+                dependencies[idx] = workspace.member_dependency(
+                    dep_name=dep,
+                    member_proj_dir=proj.path.parent,
+                    dep_proj_dir=dep_proj.path.parent,
+                )
                 member_dependencies.append(dep)
 
     source_table = proj.table("tool", "uv", "sources", create=bool(member_dependencies))
@@ -362,25 +366,6 @@ def _workspace_member_paths(
             results.append(f"{p.as_posix()}/*")
 
     return results
-
-
-def _parse_dependency_name(dep: str) -> str | None:
-    """
-    Extract the project name from a dependency string, handling file:// formats.
-    """
-    m = re.match(r"^\s*([\w\-\.\[\]]+)\s*@\s*file://", dep)
-    return m.group(1) if m else dep
-
-
-def _member_dependency(member_proj: PyProject, dep: str, dep_proj: PyProject):
-    """
-    Format an internal workspace dependency as a file:// URI with PROJECT_ROOT variable.
-    """
-    member_proj_dir = member_proj.path.parent.resolve(strict=False)
-    dep_proj_dir = dep_proj.path.parent.resolve(strict=False)
-    relative_path = os.path.relpath(dep_proj_dir, member_proj_dir)
-    member_dependency = f"{dep} @ file://$" + "{PROJECT_ROOT}/" + str(relative_path)
-    return member_dependency
 
 
 def sync_pyproject_order(

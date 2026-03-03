@@ -59,3 +59,9 @@ def test_cli_create_and_sync(temp_workspace):
 
     # Sync
     assert _run_cli(["sync"]) == 0
+
+
+def test_cli_create_project_dependency_short_flag(temp_workspace):
+    """Ensure -pd works and is not confused with -p."""
+    assert _run_cli(["create", "core"]) == 0
+    assert _run_cli(["create", "api", "-pd", "core"]) == 0

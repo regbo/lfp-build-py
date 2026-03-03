@@ -58,6 +58,29 @@ uv run lfp-build create new-service
 Using `uv run` ensures lfp-build and its dependencies are isolated from your project's runtime dependencies while
 remaining available for all developers and CI/CD environments.
 
+### Install Scripts (Nothing Preinstalled)
+
+If you want to run `lfp-build` from a fresh machine with nothing installed, use the install scripts in this repo.
+They will:
+
+- Ensure a usable `HOME` exists (fallback to `/home/app`, then `/home`, then `/tmp/home`)
+- Install `pixi` into `$HOME/.local/bin` (using `PIXI_HOME` and `PIXI_BIN_DIR`)
+- Install `uv` if missing
+- Install `lfp-build` as a uv tool
+- Run the pixi shell activation hook (best effort)
+
+Linux/macOS:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/regbo/lfp-build-py/main/install.sh | bash
+```
+
+Windows PowerShell:
+
+```powershell
+irm -useb https://raw.githubusercontent.com/regbo/lfp-build-py/main/install.ps1 | iex
+```
+
 ### For lfp-build Development
 
 ```bash
@@ -73,7 +96,7 @@ pip install -e .
 
 <!-- BEGIN:cmd lfp-build create --help -->
 ```shell
-Usage: lfp-build create [OPTIONS] NAME
+Usage: lfp-build create COMMAND [OPTIONS] NAME
 
 Create a new member project in the workspace.                                   
 
@@ -81,6 +104,10 @@ Create a new member project in the workspace.
 Sets up a pyproject.toml and a standard src//init.py layout. Internal workspace 
 dependencies are automatically synchronized after creation.
 
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ member   Create a new member project in the workspace.                       │
+│ project  Create a new workspace root project.                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Parameters ─────────────────────────────────────────────────────────────────╮
 │    --working-directory       Set the current working directory.              │
 │ *  NAME --name               The name of the new project (used for directory │
@@ -89,6 +116,8 @@ dependencies are automatically synchronized after creation.
 │                              root. Defaults to root. [default: packages]     │
 │    --project-dependency -pd  List of existing workspace projects to depend   │
 │                              on.                                             │
+│    --dependency -d           Additional dependency strings to add to the new │
+│                              project's dependencies.                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 <!-- END:cmd -->
@@ -97,13 +126,17 @@ dependencies are automatically synchronized after creation.
 # Create a new project
 uv run lfp-build create my-project
 
-# Create a project with dependencies on other workspace projects
+# Create a member with dependencies on other workspace projects
 uv run lfp-build create my-api \
   --project-dependency my-core \
   --project-dependency my-models
 
 # Create in a specific path within the workspace
 uv run lfp-build create my-project --path /path/to/parent
+
+# Create a new workspace root project (writes root pyproject.toml, adds bootstrap scripts,
+# creates packages/common)
+uv run lfp-build create project agent-demo
 ```
 
 Created projects include:
@@ -112,6 +145,15 @@ Created projects include:
 - Configured `pyproject.toml` with optional dependencies
 - `__init__.py` for package initialization
 - Workspace integration support
+
+#### Create member vs create project
+
+- `lfp-build create` (or `lfp-build create member`) creates a new member package under the workspace.
+- `lfp-build create project` bootstraps a new workspace root project with:
+  - a minimal root `pyproject.toml` configured for uv and pixi
+  - `packages/common` created as an initial member
+  - `bootstrap.sh` and `bootstrap.ps1` for curl or wget or irm or iex style setup
+  - a copied `.gitignore` from this repository if the target project does not already have one
 
 ### Sync
 
