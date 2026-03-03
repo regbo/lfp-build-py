@@ -321,9 +321,9 @@ def _format(path: pathlib.Path):
             if not _format_with_taplo(
                 path, taplo_commands=taplo_commands, use_options=False
             ):
-                _fallback_to_tombi_or_skip_windows(path, reason="Taplo formatting failed")
+                _format_with_tombi(path, reason="Taplo formatting failed")
     else:
-        _fallback_to_tombi_or_skip_windows(path, reason="Taplo unavailable")
+        _format_with_tombi(path)
 
 
 def _format_with_taplo(
@@ -377,61 +377,32 @@ def _format_with_taplo(
         return False
 
 
-def _is_windows() -> bool:
-    """
-    Determine if the current process runs on Windows.
-    """
-    return os.name == "nt"
 
 
-def _fallback_to_tombi_or_skip_windows(path: pathlib.Path, reason: str):
+def _format_with_tombi(path: pathlib.Path, reason: str="Taplo unavailable"):
     """
-    Handle formatter fallback behavior consistently across all call sites.
-
-    On Windows, tombi fallback is skipped to avoid observed hangs in tool startup.
-    On other platforms, tombi is used as the formatting fallback.
+    Format a TOML file with tombi through uv tool run.
     """
-    if _is_windows():
+    if os.name == "nt":
         LOG.warning(
             "%s on Windows. "
             "Skipping tombi fallback and leaving TOML unformatted.",
             reason,
         )
-        return
-    LOG.warning("%s. Falling back to tombi formatting.", reason)
-    _format_with_tombi(path)
-
-
-def _normalize_line_endings(path: pathlib.Path):
-    """
-    Normalize a TOML file to LF newlines.
-
-    Pixi's parser can fail on some Windows CRLF outputs for pyproject.toml.
-    Normalizing here makes persisted files consistently parseable.
-    """
-    contents = path.read_bytes()
-    normalized_contents = contents.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
-    if normalized_contents != contents:
-        # Rewrite only when content changed to avoid unnecessary disk churn.
-        path.write_bytes(normalized_contents)
-
-
-def _format_with_tombi(path: pathlib.Path):
-    """
-    Format a TOML file with tombi through uv tool run.
-    """
-    program = "tombi"
-    util.process_run(
-        "uv",
-        "tool",
-        "run",
-        "--",
-        program,
-        "format",
-        path.absolute(),
-        program_name=program,
-        stdout_log_level=logging.DEBUG,
-    )
+    else:
+        LOG.warning("%s. Falling back to tombi formatting.", reason)
+        program = "tombi"
+        util.process_run(
+            "uv",
+            "tool",
+            "run",
+            "--",
+            program,
+            "format",
+            path.absolute(),
+            program_name=program,
+            stdout_log_level=logging.DEBUG,
+        )
 
 
 @functools.cache
@@ -453,6 +424,20 @@ def _taplo_commands() -> list[str] | None:
     LOG.debug("Taplo unavailable")
     return None
 
+
+
+def _normalize_line_endings(path: pathlib.Path):
+    """
+    Normalize a TOML file to LF newlines.
+
+    Pixi's parser can fail on some Windows CRLF outputs for pyproject.toml.
+    Normalizing here makes persisted files consistently parseable.
+    """
+    contents = path.read_bytes()
+    normalized_contents = contents.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    if normalized_contents != contents:
+        # Rewrite only when content changed to avoid unnecessary disk churn.
+        path.write_bytes(normalized_contents)
 
 if __name__ == "__main__":
     print(_git_repo_name(pathlib.Path.cwd()))
