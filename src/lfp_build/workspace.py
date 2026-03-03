@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from lfp_logging import logs
 
-from lfp_build import util
+from lfp_build import _config, util
 
 """
 Interface for uv workspace metadata.
@@ -180,7 +180,7 @@ def _metadata_scan(cwd: pathlib.Path) -> Metadata:
     if root is None:
         raise ValueError(f"Workspace root not found from cwd={cwd}")
 
-    root_pyproject = root / "pyproject.toml"
+    root_pyproject = root / _config.PYROJECT_FILE_NAME
     config = _load_toml(root_pyproject)
     workspace_cfg = (
         config.get("tool", {}).get("uv", {}).get("workspace", {}) if config else {}
@@ -195,7 +195,7 @@ def _metadata_scan(cwd: pathlib.Path) -> Metadata:
                 continue
             if any(path.relative_to(root).match(str(ex)) for ex in exclude_patterns):
                 continue
-            if (path / "pyproject.toml").is_file():
+            if (path / _config.PYROJECT_FILE_NAME).is_file():
                 member_dirs.add(path)
 
     def _project_name(pyproject_path: pathlib.Path) -> str:
@@ -212,7 +212,7 @@ def _metadata_scan(cwd: pathlib.Path) -> Metadata:
     members.append(MetadataMember(name=root_name, path=root))
 
     for member_dir in sorted(member_dirs):
-        pyproject_path = member_dir / "pyproject.toml"
+        pyproject_path = member_dir / _config.PYROJECT_FILE_NAME
         members.append(MetadataMember(name=_project_name(pyproject_path), path=member_dir))
 
     return Metadata(workspace_root=root, members=members)
@@ -235,7 +235,7 @@ def _repair_workspace_sources(metadata_obj: Metadata) -> dict[pathlib.Path, str]
     originals: dict[pathlib.Path, str] = {}
 
     for member in metadata_obj.members:
-        pyproject_path = member.path / "pyproject.toml"
+        pyproject_path = member.path / _config.PYROJECT_FILE_NAME
         if not pyproject_path.is_file():
             continue
 
@@ -283,7 +283,7 @@ def _repair_workspace_sources(metadata_obj: Metadata) -> dict[pathlib.Path, str]
 def _find_workspace_root(cwd: pathlib.Path) -> pathlib.Path | None:
     cur = cwd
     while True:
-        pyproject_path = cur / "pyproject.toml"
+        pyproject_path = cur / _config.PYROJECT_FILE_NAME
         if pyproject_path.is_file():
             data = _load_toml(pyproject_path)
             if data.get("tool", {}).get("uv", {}).get("workspace", None) is not None:
