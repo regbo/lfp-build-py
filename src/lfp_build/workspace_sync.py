@@ -137,13 +137,38 @@ def _version():
 
     Uses '0.0.1+g{rev}' format where {rev} is the short hash of HEAD
     (or HEAD~1 if the working directory is modified).
+
+    If git is unavailable or the current directory is not a git repository,
+    falls back to the base version string without a revision suffix.
     """
     modified = False
-    for _ in util.process_start("git", "status", "--porcelain"):
-        modified = True
-        break
+    try:
+        for _ in util.process_start(
+            "git",
+            "status",
+            "--porcelain",
+            check=False,
+            stderr_log_level=None,
+        ):
+            modified = True
+            break
+    except OSError:
+        # git not installed or not runnable
+        modified = False
+
     head_arg = "HEAD" if modified else "HEAD~1"
-    rev = util.process_run("git", "rev-parse", "--short", head_arg)
+
+    try:
+        rev = util.process_run(
+            "git",
+            "rev-parse",
+            "--short",
+            head_arg,
+            check=False,
+            stderr_log_level=None,
+        )
+    except OSError:
+        rev = ""
     version = "0.0.1"
     return f"{version}+g{rev}" if rev else version
 

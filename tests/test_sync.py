@@ -35,3 +35,26 @@ version = "0.0.0"
 
     # Check if version was synced (it should be 0.0.1+g... or similar from git)
     assert pkg_proj.data["project"]["version"].startswith("0.0.1")
+
+
+def test_workspace_sync_version_without_git_repo(tmp_path, monkeypatch):
+    """Test that version syncing does not fail outside a git repo."""
+    proj_dir = tmp_path / "proj"
+    proj_dir.mkdir(parents=True)
+    pyproject_path = proj_dir / "pyproject.toml"
+    pyproject_path.write_text(
+        """
+[project]
+name = "no-git-proj"
+version = "0.0.0"
+"""
+    )
+
+    # Run in a directory with no .git
+    monkeypatch.chdir(proj_dir)
+
+    proj = pyproject.PyProject(pyproject_path)
+    workspace_sync.sync_version([proj], version=None)
+
+    # Should fall back to base version without raising
+    assert proj.data["project"]["version"].startswith("0.0.1")
