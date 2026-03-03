@@ -158,7 +158,7 @@ Created projects include:
 - `lfp-build create project` bootstraps a new workspace root project with:
   - a minimal root `pyproject.toml` configured for uv and pixi
   - `packages/common` created as an initial member
-  - a copied `.gitignore` from this repository if the target project does not already have one
+  - a copied local `.gitignore` template (cwd, parent, then repo fallback) if the target project does not already have one
 
 ### Sync
 
@@ -214,10 +214,13 @@ Usage: lfp-build dist [OPTIONS]
 Build wheel artifacts for workspace projects.
 
 ╭─ Parameters ─────────────────────────────────────────────────────────────────╮
-│ --working-directory  Set the current working directory.                      │
-│ --name               Optional member project names to build. If omitted, all │
-│                      workspace projects from metadata are built in metadata  │
-│                      order.                                                  │
+│ --working-directory      Set the current working directory.                  │
+│ --name                   Optional member project names to build. If omitted, │
+│                          all workspace projects from metadata are built in   │
+│                          metadata order.                                     │
+│ --delete-exisiting-whls  If True, delete existing *.whl files in each        │
+│                          project's dist folder before running uv build       │
+│                          --wheel. [default: True]                            │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 <!-- END:cmd -->

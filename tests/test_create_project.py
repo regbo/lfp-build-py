@@ -16,3 +16,16 @@ def test_create_project_command(tmp_path):
     assert '[tool.pixi.workspace]' in pyproject_text
     assert 'name = "agent-demo"' in pyproject_text
 
+
+def test_create_project_copies_local_parent_gitignore(tmp_path, monkeypatch):
+    parent = tmp_path / "parent"
+    parent.mkdir()
+    (parent / ".gitignore").write_text("dist/\n.cache/\n")
+
+    monkeypatch.chdir(parent)
+    workspace_create.project("agent-local-gitignore", path=parent)
+
+    project_root = parent / "agent-local-gitignore"
+    assert (project_root / ".gitignore").is_file()
+    assert (project_root / ".gitignore").read_text() == "dist/\n.cache/\n"
+

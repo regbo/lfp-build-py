@@ -125,16 +125,37 @@ app.command(member, name="member")
 create = member
 
 
-def _copy_repo_gitignore(target_dir: pathlib.Path) -> None:
+def _resolve_gitignore_source(project_parent_dir: pathlib.Path) -> pathlib.Path | None:
     """
-    Copy this repository's .gitignore to target_dir if missing.
+    Resolve the best local .gitignore source file for new projects.
+
+    Priority order:
+    1) Current working directory .gitignore
+    2) Parent directory used for project creation
+    3) This repository's .gitignore (when available in source checkout)
+    """
+    candidates = [
+        pathlib.Path.cwd() / ".gitignore",
+        project_parent_dir / ".gitignore",
+        pathlib.Path(__file__).resolve().parents[2] / ".gitignore",
+    ]
+    for source in candidates:
+        if source.is_file():
+            return source
+    return None
+
+
+def _copy_local_gitignore_template(
+    target_dir: pathlib.Path, project_parent_dir: pathlib.Path
+) -> None:
+    """
+    Copy a local .gitignore template to target_dir if missing.
     """
     target = target_dir / ".gitignore"
     if target.exists():
         return
-    repo_root = pathlib.Path(__file__).resolve().parents[2]
-    source = repo_root / ".gitignore"
-    if source.is_file():
+    source = _resolve_gitignore_source(project_parent_dir=project_parent_dir)
+    if source:
         target.write_text(source.read_text())
 
 
@@ -222,7 +243,7 @@ uvm = "uv run -m"
 
     (project_dir / "packages").mkdir(exist_ok=True)
 
-    _copy_repo_gitignore(project_dir)
+    _copy_local_gitignore_template(project_dir, project_parent_dir=parent)
 
     old_cwd = pathlib.Path.cwd()
     try:
