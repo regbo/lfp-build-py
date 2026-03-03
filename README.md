@@ -205,6 +205,31 @@ uv run lfp-build sync --name project1 --name project2
 uv run lfp-build sync --no-version --no-format-python
 ```
 
+### Dist
+
+<!-- BEGIN:cmd lfp-build dist --help -->
+```shell
+Usage: lfp-build dist [OPTIONS]
+
+Build wheel artifacts for workspace projects.
+
+╭─ Parameters ─────────────────────────────────────────────────────────────────╮
+│ --working-directory  Set the current working directory.                      │
+│ --name               Optional member project names to build. If omitted, all │
+│                      workspace projects from metadata are built in metadata  │
+│                      order.                                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+<!-- END:cmd -->
+
+```bash
+# Build wheel artifacts for every workspace project
+uv run lfp-build dist
+
+# Build wheel artifacts for selected projects
+uv run lfp-build dist --name common --name api
+```
+
 ### README
 
 <!-- BEGIN:cmd lfp-build readme --help -->
@@ -355,6 +380,10 @@ Utilities for creating new workspace member projects.
 ### workspace_sync.py
 
 Core synchronization logic for versions, build systems, and dependencies.
+
+### workspace_dist.py
+
+Build distribution artifacts for workspace projects.
 
 ### readme.py
 
