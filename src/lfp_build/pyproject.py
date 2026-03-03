@@ -321,24 +321,9 @@ def _format(path: pathlib.Path):
             if not _format_with_taplo(
                 path, taplo_commands=taplo_commands, use_options=False
             ):
-                if _is_windows():
-                    LOG.warning(
-                        "Taplo formatting failed on Windows. "
-                        "Skipping tombi fallback and leaving TOML unformatted."
-                    )
-                else:
-                    LOG.warning(
-                        "Taplo formatting failed. Falling back to tombi formatting."
-                    )
-                    _format_with_tombi(path)
+                _fallback_to_tombi_or_skip_windows(path, reason="Taplo formatting failed")
     else:
-        if _is_windows():
-            LOG.warning(
-                "Taplo unavailable on Windows. "
-                "Skipping tombi fallback and leaving TOML unformatted."
-            )
-        else:
-            _format_with_tombi(path)
+        _fallback_to_tombi_or_skip_windows(path, reason="Taplo unavailable")
 
 
 def _format_with_taplo(
@@ -397,6 +382,24 @@ def _is_windows() -> bool:
     Determine if the current process runs on Windows.
     """
     return os.name == "nt"
+
+
+def _fallback_to_tombi_or_skip_windows(path: pathlib.Path, reason: str):
+    """
+    Handle formatter fallback behavior consistently across all call sites.
+
+    On Windows, tombi fallback is skipped to avoid observed hangs in tool startup.
+    On other platforms, tombi is used as the formatting fallback.
+    """
+    if _is_windows():
+        LOG.warning(
+            "%s on Windows. "
+            "Skipping tombi fallback and leaving TOML unformatted.",
+            reason,
+        )
+        return
+    LOG.warning("%s. Falling back to tombi formatting.", reason)
+    _format_with_tombi(path)
 
 
 def _normalize_line_endings(path: pathlib.Path):
