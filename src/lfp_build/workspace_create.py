@@ -8,7 +8,7 @@ import tomlkit
 from cyclopts import App
 from lfp_logging import logs
 
-from lfp_build import _config, pyproject, util, workspace, workspace_sync
+from lfp_build import _config, pyproject, workspace, workspace_sync
 
 """
 Utilities for creating workspace member projects.
@@ -19,6 +19,7 @@ setting up the directory structure, package layout, and dependencies.
 
 LOG = logs.logger(__name__)
 _PATH = pathlib.Path("packages")
+_LFP_BUILD_REPO_URL = "https://github.com/regbo/lfp-build-py.git"
 
 app = App()
 
@@ -124,41 +125,6 @@ app.command(member, name="member")
 create = member
 
 
-def _normalize_git_url(url: str) -> str:
-    url = (url or "").strip()
-    if not url:
-        return ""
-    # git@github.com:owner/repo.git -> https://github.com/owner/repo.git
-    if url.startswith("git@") and ":" in url:
-        host, path = url.split(":", 1)
-        host = host.removeprefix("git@")
-        url = f"https://{host}/{path}"
-    if url.startswith("ssh://git@"):
-        url = url.replace("ssh://git@", "https://", 1)
-    if url.endswith("/"):
-        url = url[:-1]
-    if not url.endswith(".git") and "github.com" in url:
-        url = url + ".git"
-    return url
-
-
-def _lfp_build_repo_url() -> str:
-    # Allow override for environments without git metadata.
-    if env_url := os.getenv("LFP_BUILD_REPO_URL"):
-        return _normalize_git_url(env_url)
-
-    url = util.process_run(
-        "git",
-        "remote",
-        "get-url",
-        "origin",
-        check=False,
-        stderr_log_level=None,
-    )
-    url = _normalize_git_url(url)
-    return url or "https://github.com/regbo/lfp-build-py.git"
-
-
 def _copy_repo_gitignore(target_dir: pathlib.Path) -> None:
     """
     Copy this repository's .gitignore to target_dir if missing.
@@ -215,8 +181,7 @@ def project(
             raise ValueError(f"Project already exists: {project_dir}")
     project_dir.mkdir(parents=True, exist_ok=False)
 
-    repo_url = _lfp_build_repo_url()
-    lfp_build_dep = f"lfp-build @ git+{repo_url}"
+    lfp_build_dep = f"lfp-build @ git+{_LFP_BUILD_REPO_URL}"
 
     root_pyproject = project_dir / _config.PYROJECT_FILE_NAME
     root_pyproject.write_text(
