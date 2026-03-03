@@ -276,7 +276,14 @@ members = ["packages/*"]
 [tool.pixi.workspace]
 name = "{name}"
 channels = [ "conda-forge", "https://prefix.dev/regbo"]
-platforms = ["linux-64", "linux-aarch64", "osx-64", "osx-arm64", "win-64"]
+platforms = [
+  "linux-64",
+  "linux-aarch64",
+  "osx-64",
+  "osx-arm64",
+  "win-64",
+  "win-arm64"
+]
 
 [tool.pixi.environments]
 default = {{ solve-group = "default" }}
