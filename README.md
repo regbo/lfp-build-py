@@ -41,7 +41,7 @@ lfp-build is designed to be used as a development dependency. Add it to your `py
 ```toml
 [dependency-groups]
 dev = [
-    "lfp-build-py @ git+https://github.com/regbo/lfp-build-py.git"
+    "lfp-build @ git+https://github.com/regbo/lfp-build-py.git"
 ]
 ```
 
