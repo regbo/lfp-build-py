@@ -95,7 +95,9 @@ class PyProject:
 
             # Only overwrite if the formatted output actually differs
             if hash != _hash(temp_path):
-                temp_path.rename(self.path)
+                # Use replace so overwrite works on Windows where rename
+                # fails if destination already exists.
+                temp_path.replace(self.path)
                 temp_path = None
                 return hash
             else:
