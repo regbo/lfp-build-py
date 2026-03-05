@@ -5,7 +5,6 @@ import pathlib
 import re
 import subprocess
 from dataclasses import dataclass
-from typing import Any
 
 from lfp_logging import logs
 
@@ -125,7 +124,7 @@ def normalize_member_dependency(
 
 def sync_workspace_sources(
     *, source_table, member_dependencies: list[str], proj_name: str | None = None
-):
+) -> None:
     """
     Ensure `tool.uv.sources.<dep>.workspace = true` for active member deps.
 
@@ -193,7 +192,7 @@ def metadata(path: pathlib.Path = None) -> Metadata:
     raise last_exc if last_exc is not None else RuntimeError("Failed to load workspace metadata")
 
 
-def _rollback_files(originals: dict[pathlib.Path, str]):
+def _rollback_files(originals: dict[pathlib.Path, str]) -> None:
     for path, text in originals.items():
         try:
             path.write_text(text)
@@ -229,7 +228,7 @@ def _metadata_uv(cwd: pathlib.Path) -> Metadata:
     return Metadata(workspace_root=workspace_root, members=members)
 
 
-def clear_metadata_cache():
+def clear_metadata_cache() -> None:
     """
     Clear cached uv workspace metadata.
 

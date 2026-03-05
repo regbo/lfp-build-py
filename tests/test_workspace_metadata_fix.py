@@ -17,7 +17,7 @@ def _read_pyprojects(root) -> dict[str, str]:
     return out
 
 
-def _log_pyproject_diffs(before: dict[str, str], after: dict[str, str]):
+def _log_pyproject_diffs(before: dict[str, str], after: dict[str, str]) -> None:
     keys = sorted(set(before) | set(after))
     for k in keys:
         b = before.get(k)
@@ -30,7 +30,7 @@ def _log_pyproject_diffs(before: dict[str, str], after: dict[str, str]):
         LOG.info("---- AFTER (%s) ----\n%s", k, a)
 
 
-def test_metadata_repairs_missing_workspace_sources(tmp_path, monkeypatch):
+def test_metadata_repairs_missing_workspace_sources(tmp_path, monkeypatch) -> None:
     """
     If `uv workspace metadata` fails (e.g. misconfigured workspace deps), metadata()
     should attempt a best-effort repair and then retry.
@@ -94,7 +94,9 @@ version = "0.0.0"
     assert "workspace = true" in a_text
 
 
-def test_metadata_repairs_missing_workspace_sources_with_direct_reference(tmp_path, monkeypatch):
+def test_metadata_repairs_missing_workspace_sources_with_direct_reference(
+    tmp_path, monkeypatch
+) -> None:
     """
     When direct reference mode is enabled, metadata repair should inject file://
     dependency references for workspace members.
@@ -147,7 +149,7 @@ version = "0.0.0"
     assert "workspace = true" in a_text
 
 
-def test_metadata_rolls_back_repairs_on_error(tmp_path, monkeypatch):
+def test_metadata_rolls_back_repairs_on_error(tmp_path, monkeypatch) -> None:
     """If uv metadata still fails after repair, any on-disk fixes are rolled back."""
     root = tmp_path
     (root / "packages" / "a").mkdir(parents=True)

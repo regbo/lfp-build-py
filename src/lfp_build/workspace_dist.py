@@ -33,7 +33,7 @@ def dist(
     *,
     name: list[str] | None = None,
     out_dir: pathlib.Path = pathlib.Path("./dist"),
-):
+) -> None:
     """
     Build wheel artifacts for workspace projects.
 
@@ -101,7 +101,7 @@ def _resolve_members(
     return [member_map[member_name] for member_name in name]
 
 
-def _copy_overwrite(source_dir: pathlib.Path, destination_dir: pathlib.Path):
+def _copy_overwrite(source_dir: pathlib.Path, destination_dir: pathlib.Path) -> None:
     """
     Copy files from source_dir into destination_dir, replacing existing files.
     """
@@ -135,7 +135,7 @@ def _wheel_distribution_name(filename: str) -> str | None:
 
 def _delete_matching_distribution_wheels(
     destination_dir: pathlib.Path, wheel_dist_name: str
-):
+) -> None:
     """
     Delete existing wheel files for the same distribution in destination_dir.
     """
@@ -150,7 +150,7 @@ def _normalize_wheel_metadata_for_workspace_paths(
     wheel_dir: pathlib.Path,
     workspace_root: pathlib.Path,
     workspace_member_paths: set[pathlib.Path],
-):
+) -> None:
     """
     Rewrite wheel METADATA entries that point to local workspace projects.
 
@@ -170,7 +170,7 @@ def _normalize_wheel_requires_dist(
     wheel_path: pathlib.Path,
     workspace_root: pathlib.Path,
     workspace_member_paths: set[pathlib.Path],
-):
+) -> None:
     metadata_member_name = _wheel_metadata_member_name(wheel_path=wheel_path)
     if metadata_member_name is None:
         return
@@ -246,7 +246,7 @@ def _strip_workspace_file_uri_from_requirement(
 
 def _replace_wheel_member(
     *, wheel_path: pathlib.Path, member_name: str, replacement_bytes: bytes
-):
+) -> None:
     temp_file_descriptor, temp_file_name = tempfile.mkstemp(
         suffix=".whl",
         prefix=f"{wheel_path.stem}-",

@@ -1,11 +1,13 @@
 import logging
 import pathlib
+import shutil
 from collections import defaultdict
 from collections.abc import Collection
 from copy import deepcopy
 from typing import Annotated
 
 import cyclopts
+import libcst as cst
 from cyclopts import App
 from lfp_logging import logs
 from mergedeep import merge
@@ -22,6 +24,13 @@ and dependencies across the root project and its member projects.
 
 LOG = logs.logger(__name__)
 app = App()
+_BASEDPYRIGHT_DEFAULTS: dict[str, bool | str] = {
+    "typeCheckingMode": "strict",
+    "reportMissingTypeStubs": False,
+    "reportUnknownVariableType": False,
+    "reportUnknownParameterType": False,
+    "reportUnknownMemberType": False,
+}
 
 
 @app.default
@@ -37,7 +46,7 @@ def sync(
     format_pyproject: bool = True,
     format_python: bool = True,
     new_pyprojects: Annotated[dict[str, PyProject] | None, cyclopts.Parameter(show=False)] = None,
-):
+) -> None:
     """
     Synchronize project configurations across the workspace.
 
@@ -65,7 +74,7 @@ def sync(
     format_pyproject
         Format pyproject.toml files using taplo.
     format_python
-        Run ruff format and check on all projects.
+        Run basedpyright inference plus ruff format/check on all projects.
     new_pyprojects
         Internal use only.
     """
@@ -88,6 +97,8 @@ def sync(
     if reorder_pyproject:
         sync_pyproject_order(pyproject_tree)
     if format_python:
+        sync_basedpyright_settings(pyproject_tree.projects())
+        infer_python_return_types(pyproject_tree.projects())
         ruff_format(pyproject_tree.projects())
     for proj_name, proj in {
         pyproject_tree.name: pyproject_tree.root,
@@ -104,7 +115,7 @@ def sync(
         )
 
 
-def sync_version(projs: Collection[PyProject], version: str | None = None):
+def sync_version(projs: Collection[PyProject], version: str | None = None) -> None:
     """
     Update the version field in the [project] table for a collection of projects.
 
@@ -172,7 +183,7 @@ def _version() -> str:
     return f"{version}+g{rev}" if rev else version
 
 
-def sync_build_system(pyproject_tree: PyProjectTree):
+def sync_build_system(pyproject_tree: PyProjectTree) -> None:
     """
     Synchronize the [build-system] table from the root project to all member projects.
     """
@@ -184,7 +195,17 @@ def sync_build_system(pyproject_tree: PyProjectTree):
             member.data[key] = deepcopy(data)
 
 
-def sync_member_project_tool(pyproject_tree: PyProjectTree):
+def sync_basedpyright_settings(projs: Collection[PyProject]) -> None:
+    """
+    Ensure a baseline `[tool.basedpyright]` config for strict inference.
+    """
+    for proj in projs:
+        basedpyright_table = proj.table("tool", "basedpyright", create=True)
+        for key, value in _BASEDPYRIGHT_DEFAULTS.items():
+            basedpyright_table[key] = value
+
+
+def sync_member_project_tool(pyproject_tree: PyProjectTree) -> None:
     """
     Merge the [tool.member-project] configuration from root to all member projects.
     """
@@ -197,7 +218,7 @@ def sync_member_project_tool(pyproject_tree: PyProjectTree):
 
 def sync_member_project_dependencies(
     unfiltered_pyproject_tree: PyProjectTree, pyproject_tree: PyProjectTree
-):
+) -> None:
     """
     Synchronize internal workspace dependencies and uv source entries.
 
@@ -215,7 +236,7 @@ def sync_member_project_dependencies(
         _sync_member_project_dependencies(unfiltered_pyproject_tree, proj)
 
 
-def _sync_member_project_dependencies(pyproject_tree: PyProjectTree, proj: PyProject):
+def _sync_member_project_dependencies(pyproject_tree: PyProjectTree, proj: PyProject) -> None:
     """
     Internal helper to synchronize dependencies and uv sources for a specific project.
     """
@@ -250,7 +271,7 @@ def _sync_member_project_dependencies(pyproject_tree: PyProjectTree, proj: PyPro
 
 def sync_member_paths(
     unfiltered_pyproject_tree: PyProjectTree,
-):
+) -> None:
     if unfiltered_pyproject_tree.filtered:
         raise ValueError("Unfiltered workspace tree required for member path sync")
     root_proj = unfiltered_pyproject_tree.root
@@ -363,7 +384,7 @@ def _workspace_member_paths(
 
 def sync_pyproject_order(
     pyproject_tree: PyProjectTree,
-):
+) -> None:
     def _order(proj: PyProject):
         data = proj.data  # tomlkit document
 
@@ -405,7 +426,7 @@ def sync_pyproject_order(
         _order(proj)
 
 
-def ruff_format(projs: list[PyProject]):
+def ruff_format(projs: list[PyProject]) -> None:
     """
     Execute ruff formatting and linting fixes on a collection of projects.
     """
@@ -413,7 +434,151 @@ def ruff_format(projs: list[PyProject]):
         _ruff_format(proj.path.parent)
 
 
-def _ruff_format(path: pathlib.Path):
+def infer_python_return_types(projs: Collection[PyProject]) -> None:
+    """
+    Infer and apply return type annotations before Ruff formatting.
+
+    This uses BasedPyright stub generation and merges inferred return
+    annotations from generated `.pyi` stubs back into local source files.
+    Stub output directories are always cleaned up.
+    """
+    for proj in projs:
+        proj_dir = proj.path.parent
+        package_names = _discover_local_packages(proj_dir)
+        if not package_names:
+            continue
+        try:
+            _infer_python_return_types_for_project(proj_dir, package_names)
+        except Exception as exc:
+            LOG.warning(
+                "BasedPyright type inference failed; continuing. path:%s err:%s",
+                proj_dir,
+                exc,
+            )
+
+
+def _discover_local_packages(proj_dir: pathlib.Path) -> list[str]:
+    src_dir = proj_dir / "src"
+    if not src_dir.is_dir():
+        return []
+    package_names: list[str] = []
+    for package_dir in src_dir.iterdir():
+        if not package_dir.is_dir():
+            continue
+        if (package_dir / "__init__.py").is_file():
+            package_names.append(package_dir.name)
+    return sorted(package_names)
+
+
+def _infer_python_return_types_for_project(
+    proj_dir: pathlib.Path, package_names: list[str]
+) -> None:
+    stub_root = proj_dir / "typings"
+    try:
+        util.process_run("basedpyright", ".", cwd=proj_dir, check=False)
+        for package_name in package_names:
+            util.process_run("basedpyright", "--createstub", package_name, cwd=proj_dir)
+        _apply_inferred_return_types_from_stubs(
+            proj_dir=proj_dir,
+            package_names=package_names,
+        )
+    finally:
+        shutil.rmtree(stub_root, ignore_errors=True)
+
+
+def _apply_inferred_return_types_from_stubs(
+    *, proj_dir: pathlib.Path, package_names: list[str]
+) -> None:
+    stub_root = proj_dir / "typings"
+    for package_name in package_names:
+        package_stub_root = stub_root / package_name
+        package_source_root = proj_dir / "src" / package_name
+        if not package_stub_root.is_dir():
+            continue
+        for stub_path in package_stub_root.rglob("*.pyi"):
+            source_relative = stub_path.relative_to(package_stub_root).with_suffix(".py")
+            source_path = package_source_root / source_relative
+            if not source_path.is_file():
+                continue
+            _apply_stub_return_types_to_source(source_path=source_path, stub_path=stub_path)
+
+
+def _apply_stub_return_types_to_source(
+    *, source_path: pathlib.Path, stub_path: pathlib.Path
+) -> None:
+    source_module = cst.parse_module(source_path.read_text())
+    stub_module = cst.parse_module(stub_path.read_text())
+    collector = _StubReturnCollector()
+    stub_module.visit(collector)
+    if not collector.return_by_symbol:
+        return
+
+    transformer = _SourceReturnInjector(collector.return_by_symbol)
+    updated_module = source_module.visit(transformer)
+    if transformer.changed:
+        source_path.write_text(updated_module.code)
+
+
+class _StubReturnCollector(cst.CSTVisitor):
+    """
+    Collect return annotations from a stub module by symbol path.
+    """
+
+    def __init__(self) -> None:
+        self._class_stack: list[str] = []
+        self.return_by_symbol: dict[tuple[str, ...], cst.Annotation] = {}
+
+    def visit_ClassDef(self, node: cst.ClassDef) -> None:
+        self._class_stack.append(node.name.value)
+
+    def leave_ClassDef(self, original_node: cst.ClassDef) -> None:
+        self._class_stack.pop()
+
+    def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
+        if node.returns is None:
+            return
+        return_code = _annotation_code(node.returns)
+        if return_code == "None":
+            return
+        key = tuple([*self._class_stack, node.name.value])
+        self.return_by_symbol[key] = node.returns
+
+
+class _SourceReturnInjector(cst.CSTTransformer):
+    """
+    Inject missing return annotations into source module functions.
+    """
+
+    def __init__(self, return_by_symbol: dict[tuple[str, ...], cst.Annotation]) -> None:
+        self._class_stack: list[str] = []
+        self._return_by_symbol = return_by_symbol
+        self.changed = False
+
+    def visit_ClassDef(self, node: cst.ClassDef) -> None:
+        self._class_stack.append(node.name.value)
+
+    def leave_ClassDef(
+        self, original_node: cst.ClassDef, updated_node: cst.ClassDef
+    ) -> cst.ClassDef:
+        self._class_stack.pop()
+        return updated_node
+
+    def leave_FunctionDef(
+        self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
+    ) -> cst.FunctionDef:
+        key = tuple([*self._class_stack, original_node.name.value])
+        inferred_returns = self._return_by_symbol.get(key)
+        if inferred_returns is None or original_node.returns is not None:
+            return updated_node
+        self.changed = True
+        return updated_node.with_changes(returns=inferred_returns)
+
+
+def _annotation_code(annotation: cst.Annotation) -> str:
+    return cst.Module([]).code_for_node(annotation.annotation).strip()
+
+
+def _ruff_format(path: pathlib.Path) -> None:
     """
     Internal helper to run ruff check and ruff format on a specific directory.
     """

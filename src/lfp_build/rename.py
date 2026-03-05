@@ -49,7 +49,7 @@ class RenameArgs:
 @app.default()
 def rename(
     rename_args: Annotated[RenameArgs, cyclopts.Parameter(negative_iterable="")] | None,
-):
+) -> None:
     if rename_args is None:
         raise ValueError("RenameArgs cannot be None")
     file_path = pathlib.Path(__file__).parent
@@ -111,7 +111,7 @@ def _walk_dirs(root: Path, workspace_root: Path) -> Iterable[Path]:
 
 
 # noinspection PyBroadException
-def _process_files(root: Path, workspace_root: Path, args: RenameArgs):
+def _process_files(root: Path, workspace_root: Path, args: RenameArgs) -> None:
     mappings = args.mapping()
 
     for directory in _walk_dirs(root, workspace_root):
@@ -149,7 +149,7 @@ def _process_files(root: Path, workspace_root: Path, args: RenameArgs):
                     file.write_text(updated, encoding="utf-8")
 
 
-def _rename_dirs(root: Path, workspace_root: Path, args: RenameArgs):
+def _rename_dirs(root: Path, workspace_root: Path, args: RenameArgs) -> None:
     mappings = args.mapping()
     dirs: list[Path] = []
 

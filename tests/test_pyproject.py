@@ -1,7 +1,7 @@
 from lfp_build import _config, pyproject, workspace
 
 
-def test_workspace_metadata(temp_workspace):
+def test_workspace_metadata(temp_workspace) -> None:
     """Test workspace metadata retrieval."""
     meta = workspace.metadata(temp_workspace)
     # Compare resolved paths to handle macOS /private/var symlink
@@ -9,12 +9,12 @@ def test_workspace_metadata(temp_workspace):
     assert isinstance(meta.members, list)
 
 
-def test_pyproject_loading(sample_pyproject):
+def test_pyproject_loading(sample_pyproject) -> None:
     """Test loading pyproject.toml data."""
     assert sample_pyproject.data["project"]["name"] == "sample-project"
 
 
-def test_pyproject_persist(temp_workspace, sample_pyproject):
+def test_pyproject_persist(temp_workspace, sample_pyproject) -> None:
     """Test persisting changes to pyproject.toml."""
     sample_pyproject.data["project"]["version"] = "0.2.0"
     sample_pyproject.persist()
@@ -24,7 +24,7 @@ def test_pyproject_persist(temp_workspace, sample_pyproject):
     assert new_proj.data["project"]["version"] == "0.2.0"
 
 
-def test_pyproject_tree(temp_workspace):
+def test_pyproject_tree(temp_workspace) -> None:
     """Test tree discovery."""
     # Create a member project
     pkg_dir = temp_workspace / "packages" / "pkg1"

@@ -45,7 +45,7 @@ def update_cmd(
     write: bool = True,
     jobs: int | None = None,
     filter: str | None = None,
-):
+) -> None:
     """
     Update README command sentinel blocks.
 
@@ -154,7 +154,7 @@ def _run_cmd(cmd: str) -> tuple[str, str]:
     return cmd, f"```shell\n{stdout.strip()}\n```"
 
 
-def main():
+def main() -> None:
     app()
 
 

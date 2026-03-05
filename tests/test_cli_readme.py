@@ -14,7 +14,7 @@ def _run_cli(tokens: list[str]) -> int:
         return int(e.code) if isinstance(e.code, int) else 0
 
 
-def test_cli_help():
+def test_cli_help() -> None:
     """Test CLI help output."""
     # Cyclopts apps are just callables. We can capture stdout.
     import io
@@ -29,7 +29,7 @@ def test_cli_help():
     assert "readme" in output
 
 
-def test_readme_update_cmd(temp_workspace):
+def test_readme_update_cmd(temp_workspace) -> None:
     """Test updating command blocks in README."""
     readme_path = temp_workspace / "README.md"
     message = "hello-from-test"
@@ -51,7 +51,7 @@ def test_readme_update_cmd(temp_workspace):
     assert updated_content.count(message) == 2
 
 
-def test_cli_create_and_sync(temp_workspace):
+def test_cli_create_and_sync(temp_workspace) -> None:
     """Test create and sync via CLI."""
     # Create a project
     assert _run_cli(["create", "cli-pkg"]) == 0
@@ -61,7 +61,7 @@ def test_cli_create_and_sync(temp_workspace):
     assert _run_cli(["sync"]) == 0
 
 
-def test_cli_create_project_dependency_short_flag(temp_workspace):
+def test_cli_create_project_dependency_short_flag(temp_workspace) -> None:
     """Ensure -pd works and is not confused with -p."""
     assert _run_cli(["create", "core"]) == 0
     assert _run_cli(["create", "api", "-pd", "core"]) == 0

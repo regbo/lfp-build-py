@@ -41,7 +41,7 @@ class PyProject:
     using tomlkit for round-trip compatibility and taplo for formatting.
     """
 
-    def __init__(self, path: pathlib.Path):
+    def __init__(self, path: pathlib.Path) -> None:
         """
         Initialize a PyProject instance.
         """
@@ -131,7 +131,7 @@ class PyProject:
             cur_table = value
         return cur_table
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if data := self._data:
             name = data.get("project", {}).get("name", "[UNKNOWN]")
         else:
@@ -222,7 +222,7 @@ def tree(metadata: workspace.Metadata | None = None) -> PyProjectTree:
     )
 
 
-def _prune(data: Any):
+def _prune(data: Any) -> None:
     """
     Recursively remove empty tables and arrays from a TOML document.
 
@@ -230,7 +230,7 @@ def _prune(data: Any):
     partially populated or cleared configuration sections.
     """
 
-    def _is_empty(d) -> bool:
+    def _is_empty(d: Any) -> bool:
         if not isinstance(d, str) and isinstance(d, (Collection, Mapping)):
             return len(d) == 0
         else:
@@ -295,7 +295,7 @@ def _file_path(path: pathlib.Path) -> pathlib.Path:
         return path
 
 
-def _format(path: pathlib.Path):
+def _format(path: pathlib.Path) -> None:
     """
     Apply formatting to a TOML file.
 
@@ -364,7 +364,7 @@ def _format_with_taplo(path: pathlib.Path, taplo_commands: list[str], use_option
         return False
 
 
-def _format_with_tombi(path: pathlib.Path, reason: str = "Taplo unavailable"):
+def _format_with_tombi(path: pathlib.Path, reason: str = "Taplo unavailable") -> None:
     """
     Format a TOML file with tombi through uv tool run.
     """
@@ -407,7 +407,7 @@ def _taplo_commands() -> list[str] | None:
     return None
 
 
-def _normalize_line_endings(path: pathlib.Path):
+def _normalize_line_endings(path: pathlib.Path) -> None:
     """
     Normalize a TOML file to LF newlines.
 

@@ -77,12 +77,12 @@ def process_start(
 
     commands = list(proc.args) if isinstance(proc.args, (list, tuple)) else [str(proc.args)]
 
-    def _read_stream(stream) -> Iterator[str]:
+    def _read_stream(stream: Iterator[str]) -> Iterator[str]:
         for line in stream:
             if line:
                 yield line[:-1]
 
-    def _log_line(line: str, log_level: int):
+    def _log_line(line: str, log_level: int) -> None:
         LOG.log(
             log_level,
             f"[{program_name if program_name else commands[0]}] | {line}",
@@ -92,7 +92,7 @@ def process_start(
     try:
         if stderr_log_level is not None:
 
-            def _log_stderr():
+            def _log_stderr() -> None:
                 for line in _read_stream(proc.stderr):
                     _log_line(line, stderr_log_level)
 
@@ -120,7 +120,7 @@ def process_start(
             raise subprocess.CalledProcessError(returncode=proc.returncode, cmd=proc.args)
 
 
-def process_run(*args, strip: bool = True, **kwargs) -> str:
+def process_run(*args: Any, strip: bool = True, **kwargs: Any) -> str:
     """
     Run a process and return its full stdout as a string.
 

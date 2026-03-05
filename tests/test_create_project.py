@@ -3,7 +3,7 @@ import subprocess
 from lfp_build import _config, workspace_create
 
 
-def test_create_project_command(tmp_path):
+def test_create_project_command(tmp_path) -> None:
     workspace_create.project("agent-demo", path=tmp_path)
 
     root = tmp_path / "agent-demo"
@@ -33,7 +33,7 @@ def test_create_project_command(tmp_path):
     assert hooks_path == ".githooks"
 
 
-def test_create_project_copies_local_parent_gitignore(tmp_path, monkeypatch):
+def test_create_project_copies_local_parent_gitignore(tmp_path, monkeypatch) -> None:
     parent = tmp_path / "parent"
     parent.mkdir()
     (parent / ".gitignore").write_text("dist/\n.cache/\n")
@@ -46,7 +46,7 @@ def test_create_project_copies_local_parent_gitignore(tmp_path, monkeypatch):
     assert (project_root / ".gitignore").read_text() == "dist/\n.cache/\n"
 
 
-def test_create_member_preserves_existing_pre_commit(temp_workspace, monkeypatch):
+def test_create_member_preserves_existing_pre_commit(temp_workspace, monkeypatch) -> None:
     custom_hook = temp_workspace / ".githooks" / "pre-commit"
     custom_hook.parent.mkdir(parents=True, exist_ok=True)
     custom_hook.write_text("#!/bin/sh\necho custom\n")

@@ -47,11 +47,11 @@ MEMBER_PROJECT_DIRECT_REFERENCE = _EnvarConfig[bool](
 
 
 @functools.cache
-def load():
+def load() -> None:
     _load_dotenv()
 
 
-def _load_dotenv():
+def _load_dotenv() -> None:
     env_file_name = PYTHON_DOTENV_FILE.get()
 
     seen: set[pathlib.Path] = set()

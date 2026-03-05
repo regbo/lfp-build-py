@@ -1,12 +1,13 @@
 import pathlib
 import zipfile
+from typing import Never
 
 import pytest
 
 from lfp_build import workspace, workspace_dist
 
 
-def test_dist_builds_all_workspace_members(monkeypatch, tmp_path):
+def test_dist_builds_all_workspace_members(monkeypatch, tmp_path) -> None:
     root = tmp_path / "root"
     pkg = tmp_path / "pkg"
     root.mkdir()
@@ -24,7 +25,7 @@ def test_dist_builds_all_workspace_members(monkeypatch, tmp_path):
 
     calls: list[tuple[tuple, dict]] = []
 
-    def _process_run(*args, **kwargs):
+    def _process_run(*args, **kwargs) -> str:
         calls.append((args, kwargs))
         out_index = args.index("--out-dir")
         temp_out_dir = pathlib.Path(args[out_index + 1])
@@ -46,7 +47,7 @@ def test_dist_builds_all_workspace_members(monkeypatch, tmp_path):
     assert (tmp_path / "dist" / "pkg-0.0.1-py3-none-any.whl").is_file()
 
 
-def test_dist_fails_on_unknown_member_name(monkeypatch, tmp_path):
+def test_dist_fails_on_unknown_member_name(monkeypatch, tmp_path) -> None:
     root = tmp_path / "root"
     root.mkdir()
 
@@ -60,7 +61,7 @@ def test_dist_fails_on_unknown_member_name(monkeypatch, tmp_path):
         workspace_dist.dist(name=["missing"])
 
 
-def test_dist_writes_to_custom_out_dir_and_overwrites(monkeypatch, tmp_path):
+def test_dist_writes_to_custom_out_dir_and_overwrites(monkeypatch, tmp_path) -> None:
     project = tmp_path / "project"
     project.mkdir()
     out_dir = tmp_path / ".example"
@@ -75,7 +76,7 @@ def test_dist_writes_to_custom_out_dir_and_overwrites(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(workspace_dist.workspace, "metadata", lambda: metadata)
 
-    def _process_run(*args, **kwargs):
+    def _process_run(*args, **kwargs) -> str:
         out_index = args.index("--out-dir")
         temp_out_dir = pathlib.Path(args[out_index + 1])
         temp_out_dir.mkdir(parents=True, exist_ok=True)
@@ -90,7 +91,7 @@ def test_dist_writes_to_custom_out_dir_and_overwrites(monkeypatch, tmp_path):
     assert (out_dir / new_wheel_name).read_text() == "new"
 
 
-def test_dist_rewrites_workspace_file_uri_requires_dist(monkeypatch, tmp_path):
+def test_dist_rewrites_workspace_file_uri_requires_dist(monkeypatch, tmp_path) -> None:
     workspace_root = tmp_path / "workspace"
     dashboard = workspace_root / "dashboard"
     common = workspace_root / "packages" / "common"
@@ -109,7 +110,7 @@ def test_dist_rewrites_workspace_file_uri_requires_dist(monkeypatch, tmp_path):
 
     wheel_name = "dashboard-0.0.1-py3-none-any.whl"
 
-    def _process_run(*args, **kwargs):
+    def _process_run(*args, **kwargs) -> str:
         out_index = args.index("--out-dir")
         temp_out_dir = pathlib.Path(args[out_index + 1])
         temp_out_dir.mkdir(parents=True, exist_ok=True)
@@ -137,7 +138,7 @@ def test_dist_rewrites_workspace_file_uri_requires_dist(monkeypatch, tmp_path):
     assert "Requires-Dist: common\n" in metadata_text
 
 
-def test_dist_keeps_non_workspace_file_uri_requires_dist(monkeypatch, tmp_path):
+def test_dist_keeps_non_workspace_file_uri_requires_dist(monkeypatch, tmp_path) -> None:
     workspace_root = tmp_path / "workspace"
     dashboard = workspace_root / "dashboard"
     dashboard.mkdir(parents=True)
@@ -153,7 +154,7 @@ def test_dist_keeps_non_workspace_file_uri_requires_dist(monkeypatch, tmp_path):
 
     wheel_name = "dashboard-0.0.1-py3-none-any.whl"
 
-    def _process_run(*args, **kwargs):
+    def _process_run(*args, **kwargs) -> str:
         out_index = args.index("--out-dir")
         temp_out_dir = pathlib.Path(args[out_index + 1])
         temp_out_dir.mkdir(parents=True, exist_ok=True)
@@ -180,7 +181,7 @@ def test_dist_keeps_non_workspace_file_uri_requires_dist(monkeypatch, tmp_path):
     assert f"Requires-Dist: common @ file://{external_common}\n" in metadata_text
 
 
-def test_dist_skips_wheel_metadata_rewrite_when_direct_reference_off(monkeypatch, tmp_path):
+def test_dist_skips_wheel_metadata_rewrite_when_direct_reference_off(monkeypatch, tmp_path) -> None:
     workspace_root = tmp_path / "workspace"
     dashboard = workspace_root / "dashboard"
     dashboard.mkdir(parents=True)
@@ -191,7 +192,7 @@ def test_dist_skips_wheel_metadata_rewrite_when_direct_reference_off(monkeypatch
     monkeypatch.delenv("LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE", raising=False)
     monkeypatch.setattr(workspace_dist.workspace, "metadata", lambda: metadata)
 
-    def _normalize_wheels(**kwargs):
+    def _normalize_wheels(**kwargs) -> Never:
         raise AssertionError("wheel metadata rewrite should be skipped when disabled")
 
     monkeypatch.setattr(
@@ -202,7 +203,7 @@ def test_dist_skips_wheel_metadata_rewrite_when_direct_reference_off(monkeypatch
 
     wheel_name = "dashboard-0.0.1-py3-none-any.whl"
 
-    def _process_run(*args, **kwargs):
+    def _process_run(*args, **kwargs) -> str:
         out_index = args.index("--out-dir")
         temp_out_dir = pathlib.Path(args[out_index + 1])
         temp_out_dir.mkdir(parents=True, exist_ok=True)

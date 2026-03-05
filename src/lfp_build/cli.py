@@ -26,7 +26,7 @@ app = cyclopts.App(default_parameter=cyclopts.Parameter(negative=""))
 def launcher(
     *tokens: Annotated[str, cyclopts.Parameter(show=False, allow_leading_hyphen=True)],
     working_directory: pathlib.Path | None = None,
-):
+) -> int:
     """
     Main entry point for the lfp-build CLI.
 
@@ -53,7 +53,7 @@ app.command(readme.app, name="readme")
 app.command(rename.app, name="rename")
 
 
-def main():
+def main() -> None:
     app.meta()
 
 

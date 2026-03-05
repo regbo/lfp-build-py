@@ -8,35 +8,35 @@ import pytest
 from lfp_build import util
 
 
-def test_logger():
+def test_logger() -> None:
     """Test logger availability."""
     assert isinstance(util.LOG, logging.Logger)
     assert util.LOG.name == "lfp_build.util"
 
 
-def test_process_run_success():
+def test_process_run_success() -> None:
     """Test process_run with a simple successful command."""
     output = util.process_run("echo", "hello world")
     assert output == "hello world"
 
 
-def test_process_run_error():
+def test_process_run_error() -> None:
     """Test process_run with a failing command."""
     with pytest.raises(subprocess.CalledProcessError):
         util.process_run("ls", "/non-existent-directory-12345", check=True)
 
 
-def test_process_start_iteration():
+def test_process_start_iteration() -> None:
     """Test process_start yielding lines."""
     lines = list(util.process_start("echo", "line1\nline2"))
     assert "line1" in lines
     assert "line2" in lines
 
 
-def test_process_start_clean_shutdown():
+def test_process_start_clean_shutdown() -> None:
     """Test that stopping iteration cleans up a long-running process without errors."""
 
-    def _run(q: queue.Queue[str]):
+    def _run(q: queue.Queue[str]) -> None:
         # A command that would run indefinitely printing "hello world"
         cmd = ["sh", "-c", "while true; do echo 'hello world'; sleep 0.1; done"]
 
