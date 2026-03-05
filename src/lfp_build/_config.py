@@ -23,7 +23,7 @@ The dotenv file defaults to `.dev.env` and can be overridden by setting the
 
 PYPROJECT_FILE_NAME = "pyproject.toml"
 
-_T = TypeVar("T")
+_T = TypeVar("_T")
 _ENVAR_CONFIG_PREFIX = "LFP_BUILD_"
 
 
@@ -46,7 +46,6 @@ MEMBER_PROJECT_DIRECT_REFERENCE = _EnvarConfig[bool](
 )
 
 
-@functools.cache
 def load() -> None:
     _load_dotenv()
 
