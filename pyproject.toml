@@ -20,6 +20,8 @@ dependencies = [
     "sitecustomize-entrypoints",
     # Parse and write pyproject.toml with formatting preservation.
     "tomlkit",
+    # Deep merge for pyproject tables.
+    "mergedeep",
     # Lint and format engine invoked by sync.
     "ruff",
     # Type inference engine invoked by sync before Ruff.

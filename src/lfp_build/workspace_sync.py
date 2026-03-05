@@ -8,6 +8,7 @@ from typing import Annotated
 
 import cyclopts
 import libcst as cst
+import mergedeep
 from cyclopts import App
 from lfp_logging import logs
 
@@ -204,15 +205,17 @@ def sync_basedpyright_settings(projs: Collection[PyProject]) -> None:
             basedpyright_table[key] = value
 
 
-def sync_member_project_tool(pyproject_tree: PyProjectTree) -> None:
+def sync_member_project_tool(pyproject_tree: PyProjectTree):
     """
     Merge the [tool.member-project] configuration from root to all member projects.
     """
-    member_project_data = pyproject_tree.root.data.get("tool", {}).get("member-project", {})
+    member_project_data = pyproject_tree.root.data.get("tool", {}).get(
+        "member-project", {}
+    )
     LOG.debug("Member project data: %s", member_project_data)
     if member_project_data:
         for member in pyproject_tree.members.values():
-            util.merge_mapping(member.data, member_project_data)
+            mergedeep.merge(member.data, member_project_data)
 
 
 def sync_member_project_dependencies(
