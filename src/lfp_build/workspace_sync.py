@@ -35,17 +35,17 @@ _BASEDPYRIGHT_DEFAULTS: dict[str, bool | str] = {
 
 @app.default
 def sync(
-        *,
-        name: list[str] | None = None,
-        version: bool = True,
-        build_system: bool = True,
-        member_project_tool: bool = True,
-        member_project_dependencies: bool = True,
-        member_paths: bool = True,
-        reorder_pyproject: bool = True,
-        format_pyproject: bool = True,
-        format_python: bool = True,
-        new_pyprojects: Annotated[dict[str, PyProject] | None, cyclopts.Parameter(show=False)] = None,
+    *,
+    name: list[str] | None = None,
+    version: bool = True,
+    build_system: bool = True,
+    member_project_tool: bool = True,
+    member_project_dependencies: bool = True,
+    member_paths: bool = True,
+    reorder_pyproject: bool = True,
+    format_pyproject: bool = True,
+    format_python: bool = True,
+    new_pyprojects: Annotated[dict[str, PyProject] | None, cyclopts.Parameter(show=False)] = None,
 ) -> None:
     """
     Synchronize project configurations across the workspace.
@@ -154,11 +154,11 @@ def _version() -> str:
     modified = False
     try:
         for _ in util.process_start(
-                "git",
-                "status",
-                "--porcelain",
-                check=False,
-                stderr_log_level=None,
+            "git",
+            "status",
+            "--porcelain",
+            check=False,
+            stderr_log_level=None,
         ):
             modified = True
             break
@@ -209,9 +209,7 @@ def sync_member_project_tool(pyproject_tree: PyProjectTree):
     """
     Merge the [tool.member-project] configuration from root to all member projects.
     """
-    member_project_data = pyproject_tree.root.data.get("tool", {}).get(
-        "member-project", {}
-    )
+    member_project_data = pyproject_tree.root.data.get("tool", {}).get("member-project", {})
     LOG.debug("Member project data: %s", member_project_data)
     if member_project_data:
         for member in pyproject_tree.members.values():
@@ -219,7 +217,7 @@ def sync_member_project_tool(pyproject_tree: PyProjectTree):
 
 
 def sync_member_project_dependencies(
-        unfiltered_pyproject_tree: PyProjectTree, pyproject_tree: PyProjectTree
+    unfiltered_pyproject_tree: PyProjectTree, pyproject_tree: PyProjectTree
 ) -> None:
     """
     Synchronize internal workspace dependencies and uv source entries.
@@ -272,7 +270,7 @@ def _sync_member_project_dependencies(pyproject_tree: PyProjectTree, proj: PyPro
 
 
 def sync_member_paths(
-        unfiltered_pyproject_tree: PyProjectTree,
+    unfiltered_pyproject_tree: PyProjectTree,
 ) -> None:
     if unfiltered_pyproject_tree.filtered:
         raise ValueError("Unfiltered workspace tree required for member path sync")
@@ -302,7 +300,7 @@ def sync_member_paths(
 
 
 def _workspace_member_paths(
-        root: pathlib.Path, paths: list[pathlib.Path], excludes: list[str] | None
+    root: pathlib.Path, paths: list[pathlib.Path], excludes: list[str] | None
 ) -> list[str]:
     """
     Consolidate project paths into parent wildcards (e.g., 'packages/*') strictly.
@@ -385,7 +383,7 @@ def _workspace_member_paths(
 
 
 def sync_pyproject_order(
-        pyproject_tree: PyProjectTree,
+    pyproject_tree: PyProjectTree,
 ) -> None:
     def _order(proj: PyProject) -> PyProject:
         data = proj.data  # tomlkit document
@@ -413,11 +411,11 @@ def sync_pyproject_order(
         data.clear()
 
         for group in (
-                build_system,
-                project,
-                project_children,
-                dependency_groups,
-                rest,
+            build_system,
+            project,
+            project_children,
+            dependency_groups,
+            rest,
         ):
             for k, v in group:
                 data.add(k, v)
@@ -473,13 +471,19 @@ def _discover_local_packages(proj_dir: pathlib.Path) -> list[str]:
 
 
 def _infer_python_return_types_for_project(
-        proj_dir: pathlib.Path, package_names: list[str]
+    proj_dir: pathlib.Path, package_names: list[str]
 ) -> None:
     stub_root = proj_dir / "typings"
     try:
         util.process_run("basedpyright", ".", cwd=proj_dir, check=False, stderr_log_background=True)
         for package_name in package_names:
-            util.process_run("basedpyright", "--createstub", package_name, cwd=proj_dir, stderr_log_background=True)
+            util.process_run(
+                "basedpyright",
+                "--createstub",
+                package_name,
+                cwd=proj_dir,
+                stderr_log_background=True,
+            )
         _apply_inferred_return_types_from_stubs(
             proj_dir=proj_dir,
             package_names=package_names,
@@ -489,7 +493,7 @@ def _infer_python_return_types_for_project(
 
 
 def _apply_inferred_return_types_from_stubs(
-        *, proj_dir: pathlib.Path, package_names: list[str]
+    *, proj_dir: pathlib.Path, package_names: list[str]
 ) -> None:
     stub_root = proj_dir / "typings"
     for package_name in package_names:
@@ -506,7 +510,7 @@ def _apply_inferred_return_types_from_stubs(
 
 
 def _apply_stub_return_types_to_source(
-        *, source_path: pathlib.Path, stub_path: pathlib.Path
+    *, source_path: pathlib.Path, stub_path: pathlib.Path
 ) -> None:
     source_module = cst.parse_module(source_path.read_text())
     stub_module = cst.parse_module(stub_path.read_text())
@@ -560,13 +564,13 @@ class _SourceReturnInjector(cst.CSTTransformer):
         self._class_stack.append(node.name.value)
 
     def leave_ClassDef(
-            self, original_node: cst.ClassDef, updated_node: cst.ClassDef
+        self, original_node: cst.ClassDef, updated_node: cst.ClassDef
     ) -> cst.ClassDef:
         self._class_stack.pop()
         return updated_node
 
     def leave_FunctionDef(
-            self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
+        self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
     ) -> cst.FunctionDef:
         key = tuple([*self._class_stack, original_node.name.value])
         inferred_returns = self._return_by_symbol.get(key)
