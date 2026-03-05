@@ -85,7 +85,7 @@ def _root_dir() -> pathlib.Path | None:
             return cur
         else:
             parent = cur.parent
-            if not parent or parent == cur:
+            if parent == cur:
                 break
             cur = parent
     return None

@@ -10,7 +10,6 @@ import cyclopts
 import libcst as cst
 from cyclopts import App
 from lfp_logging import logs
-from mergedeep import merge
 
 from lfp_build import _config, pyproject, util, workspace
 from lfp_build.pyproject import PyProject, PyProjectTree
@@ -213,7 +212,7 @@ def sync_member_project_tool(pyproject_tree: PyProjectTree) -> None:
     LOG.debug("Member project data: %s", member_project_data)
     if member_project_data:
         for member in pyproject_tree.members.values():
-            merge(member.data, member_project_data)
+            util.merge_mapping(member.data, member_project_data)
 
 
 def sync_member_project_dependencies(

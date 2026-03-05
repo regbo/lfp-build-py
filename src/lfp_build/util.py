@@ -2,7 +2,8 @@ import logging
 import pathlib
 import subprocess
 import threading
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
+from copy import deepcopy
 from typing import Any
 
 from lfp_logging import logs
@@ -134,6 +135,22 @@ def process_run(*args: Any, strip: bool = True, **kwargs: Any) -> str:
     """
     std_out = "\n".join(process_start(*args, **kwargs))
     return std_out.strip() if strip else std_out
+
+
+def merge_mapping(target: Any, source: Mapping[str, Any]) -> Any:
+    """
+    Recursively merge mapping values from source into target.
+
+    Existing nested mappings are merged in place. Non-mapping values are
+    replaced with a deep copy from source.
+    """
+    for key, value in source.items():
+        target_value = target.get(key, None)
+        if isinstance(target_value, Mapping) and isinstance(value, Mapping):
+            merge_mapping(target_value, value)
+        else:
+            target[key] = deepcopy(value)
+    return target
 
 
 if __name__ == "__main__":

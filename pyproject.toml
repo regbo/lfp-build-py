@@ -8,16 +8,24 @@ version = "0.0.1+g19a292c"
 description = "Local build utilities"
 requires-python = ">=3.11,<3.14"
 dependencies = [
-    "basedpyright",
+    # Build and workspace command orchestration backend.
     "uv>=0.9.9",
-    "libcst",
-    "mergedeep",
-    "ruff",
-    "tomlkit",
+    # CLI framework used for command parsing and help output.
     "cyclopts",
+    # Logging facade used across all modules.
     "lfp-logging @ git+https://github.com/regbo/lfp-logging-py.git",
+    # Load .env files for runtime config defaults.
     "python-dotenv",
+    # Auto-load lfp_build._config at interpreter startup.
     "sitecustomize-entrypoints",
+    # Parse and write pyproject.toml with formatting preservation.
+    "tomlkit",
+    # Lint and format engine invoked by sync.
+    "ruff",
+    # Type inference engine invoked by sync before Ruff.
+    "basedpyright",
+    # CST transformer used to apply inferred return types.
+    "libcst",
 ]
 
 [project.scripts]
@@ -26,7 +34,6 @@ lfp-build = "lfp_build.cli:main"
 [project.entry-points.sitecustomize]
 lfp-build-config = "lfp_build._config:load"
 
-# test123
 [dependency-groups]
 dev = ["pytest"]
 
