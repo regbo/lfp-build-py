@@ -1,7 +1,10 @@
+import faulthandler
 import functools
 import os
 import pathlib
+import signal
 import subprocess
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from os import PathLike
@@ -46,7 +49,9 @@ MEMBER_PROJECT_DIRECT_REFERENCE = _EnvarConfig[bool](
 )
 
 
+@functools.cache
 def load() -> None:
+    _install_sigint_traceback_dump()
     _load_dotenv()
 
 
@@ -66,6 +71,14 @@ def _load_dotenv() -> None:
             env_file = dir_path / env_file_name
             if env_file.is_file():
                 load_dotenv(env_file, override=False)
+
+
+def _dump(sig, frame):
+    faulthandler.dump_traceback(file=sys.stderr, all_threads=True)
+
+
+def _install_sigint_traceback_dump() -> None:
+    signal.signal(signal.SIGINT, _dump)
 
 
 def _root_dir() -> pathlib.Path | None:
