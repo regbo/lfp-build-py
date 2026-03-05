@@ -77,15 +77,83 @@ def member_dependency(
     return f"{dep_name} @ file://${{PROJECT_ROOT}}/{relative_path}"
 
 
+def normalize_member_dependency(
+    *,
+    dependency: str,
+    member_proj_dir: pathlib.Path,
+    member_paths_by_name: dict[str, pathlib.Path],
+    direct_reference: bool,
+) -> tuple[str, str | None]:
+    """
+    Normalize a dependency string for workspace member references.
+
+    Parameters
+    ----------
+    dependency
+        Dependency entry from `project.dependencies`.
+    member_proj_dir
+        Directory containing the dependent project's `pyproject.toml`.
+    member_paths_by_name
+        Mapping of workspace member names to project directories.
+    direct_reference
+        When True, return `name @ file://${PROJECT_ROOT}/...` for internal
+        workspace dependencies. When False, return plain member names.
+
+    Returns
+    -------
+    tuple[str, str | None]
+        The normalized dependency string and the internal member name when the
+        dependency targets another workspace member. The member name is None
+        for non-workspace dependencies.
+    """
+    dep_name = parse_dependency_name(dependency)
+    dep_proj_dir = member_paths_by_name.get(dep_name)
+    if dep_proj_dir is None:
+        return dependency, None
+    if direct_reference:
+        return (
+            member_dependency(
+                dep_name=dep_name,
+                member_proj_dir=member_proj_dir,
+                dep_proj_dir=dep_proj_dir,
+            ),
+            dep_name,
+        )
+    return dep_name, dep_name
+
+
+def sync_workspace_sources(
+    *, source_table, member_dependencies: list[str], proj_name: str | None = None
+) -> None:
+    """
+    Ensure `tool.uv.sources.<dep>.workspace = true` for active member deps.
+
+    Existing workspace source entries for dependencies that are no longer
+    present are removed.
+    """
+    workspace_key = "workspace"
+    for dep in list(source_table.keys()):
+        workspace_value = source_table.get(dep, {}).get(workspace_key, None)
+        if workspace_value is True and dep not in member_dependencies:
+            source_table.remove(dep)
+            LOG.debug(
+                "Removed source - key:%s proj:%s dependency:%s",
+                workspace_key,
+                proj_name if proj_name is not None else "[unknown]",
+                dep,
+            )
+    for member_dependency_name in member_dependencies:
+        source_table.update({member_dependency_name: {workspace_key: True}})
+
+
 def metadata(path: pathlib.Path = None) -> Metadata:
     """
-    Retrieve metadata for a uv workspace.
+    Retrieve metadata for a uv workspace with repair-and-fallback behavior.
 
-    Args:
-        path: Directory within the workspace. Defaults to current working directory.
-
-    Returns:
-        Parsed uv workspace metadata.
+    When `uv workspace metadata` fails, this function performs a best-effort
+    repair pass on workspace dependency source entries and retries. If the retry
+    still fails, any repair edits are rolled back and filesystem scanning is
+    used as a fallback metadata source.
     """
     if path is None:
         path = pathlib.Path().cwd()
@@ -249,20 +317,17 @@ def _repair_workspace_sources(metadata_obj: Metadata) -> dict[pathlib.Path, str]
 
         member_dir = member.path
         for idx, dep in enumerate(list(deps)):
-            dep_name = parse_dependency_name(str(dep))
-            if dep_name not in member_names:
+            normalized_dep, member_dependency_name = normalize_member_dependency(
+                dependency=str(dep),
+                member_proj_dir=member_dir,
+                member_paths_by_name=name_to_dir,
+                direct_reference=direct_reference,
+            )
+            if member_dependency_name is None or member_dependency_name not in member_names:
                 continue
-            dep_dir = name_to_dir[dep_name]
-            if direct_reference:
-                deps[idx] = member_dependency(
-                    dep_name=dep_name,
-                    member_proj_dir=member_dir,
-                    dep_proj_dir=dep_dir,
-                )
-            else:
-                deps[idx] = dep_name
+            deps[idx] = normalized_dep
             updated = True
-            src = sources_tbl.setdefault(dep_name, tomlkit.table())
+            src = sources_tbl.setdefault(member_dependency_name, tomlkit.table())
             if src.get("workspace", None) is not True:
                 src["workspace"] = True
                 updated = True

@@ -32,7 +32,7 @@ Integrate workspace management into CI/CD pipelines with deterministic outputs a
 
 ## Installation
 
-This package requires Python 3.12 or higher (< 3.14).
+This package requires Python >= 3.11 and < 3.14.
 
 ### For Use in Your Project (Recommended)
 
@@ -120,7 +120,8 @@ dependencies are automatically synchronized after creation.
 │ *  NAME --name               The name of the new project (used for directory │
 │                              and package name). [required]                   │
 │    --path -p                 Optional parent directory within the workspace  │
-│                              root. Defaults to root. [default: packages]     │
+│                              root. Defaults to packages/. [default:          │
+│                              packages]                                       │
 │    --project-dependency -pd  List of existing workspace projects to depend   │
 │                              on.                                             │
 │    --dependency -d           Additional dependency strings to add to the new │
@@ -180,9 +181,12 @@ aligned with the root project settings and ensure consistent dependencies.
 │                               member projects. [default: True]               │
 │ --member-project-tool         Sync [tool.member-project] from root project   │
 │                               to all member projects. [default: True]        │
-│ --member-project-dependencie  Sync internal member dependencies to use       │
-│   s                           file:// paths and uv workspace sources.        │
-│                               [default: True]                                │
+│ --member-project-dependencie  Sync internal member dependencies and uv       │
+│   s                           workspace sources. Dependency format is        │
+│                               controlled by                                  │
+│                               _config.MEMBER_PROJECT_DIRECT_REFERENCE.get()  │
+│                               (plain names when False, ${PROJECT_ROOT} file  │
+│                               references when True). [default: True]         │
 │ --member-paths                Sync member path patterns. [default: True]     │
 │ --reorder-pyproject           Order pyproject entries where applicable.      │
 │                               [default: True]                                │
@@ -211,7 +215,12 @@ uv run lfp-build sync --no-version --no-format-python
 ```shell
 Usage: lfp-build dist [OPTIONS]
 
-Build wheel artifacts for workspace projects.
+Build wheel artifacts for workspace projects.                                   
+
+When _config.MEMBER_PROJECT_DIRECT_REFERENCE.get() is True, built wheels are    
+inspected in the temporary output directory and workspace-local Requires-Dist:  
+... @ file://... entries are normalized to plain package requirements before    
+copying artifacts to out_dir.
 
 ╭─ Parameters ─────────────────────────────────────────────────────────────────╮
 │ --working-directory  Set the current working directory.                      │
@@ -232,6 +241,33 @@ uv run lfp-build dist
 
 # Build wheel artifacts for selected projects
 uv run lfp-build dist --name common --name api
+```
+
+### Rename
+
+<!-- BEGIN:cmd lfp-build rename --help -->
+```shell
+Usage: lfp-build rename [ARGS]
+
+╭─ Parameters ─────────────────────────────────────────────────────────────────╮
+│ --working-directory     Set the current working directory.                   │
+│ TRANSFORM --transform   [default: []]                                        │
+│ DRY-RUN --dry-run       [default: False]                                     │
+│ DASH-TO-UNDERSCORE      [default: False]                                     │
+│   --dash-to-underscore                                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+<!-- END:cmd -->
+
+```bash
+# Rename strings in files and folder names recursively
+uv run lfp-build rename old-name:new-name
+
+# Preview rename changes without writing
+uv run lfp-build rename old-name:new-name --dry-run
+
+# Also rewrite underscore variants (old_name -> new_name)
+uv run lfp-build rename old-name:new-name --dash-to-underscore
 ```
 
 ### README
@@ -411,6 +447,14 @@ Core dependencies:
 ### Environment Variables
 
 - `LOG_LEVEL`: Control logging verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- `LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE`: Controls how internal workspace
+  dependencies are written during sync and metadata repair.
+  - `false` (default): keep internal dependencies as plain names (for example,
+    `common`) and maintain `tool.uv.sources.<dep>.workspace = true`.
+  - `true`: write internal dependencies as
+    `name @ file://${PROJECT_ROOT}/...`. During `dist`, built wheel metadata is
+    inspected and workspace-local `Requires-Dist: ... @ file://...` entries are
+    rewritten to plain dependency names before copy.
 
 ## Extending lfp-build
 

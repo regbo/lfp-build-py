@@ -1,6 +1,8 @@
 import os
 import pathlib
 import shutil
+import stat
+import subprocess
 from typing import Annotated
 
 import cyclopts
@@ -20,6 +22,22 @@ setting up the directory structure, package layout, and dependencies.
 LOG = logs.logger(__name__)
 _PATH = pathlib.Path("packages")
 _LFP_BUILD_REPO_URL = "https://github.com/regbo/lfp-build-py.git"
+_GIT_HOOKS_DIR = pathlib.Path(".githooks")
+_PRE_COMMIT_HOOK = _GIT_HOOKS_DIR / "pre-commit"
+_PRE_COMMIT_SCRIPT = """#!/bin/sh
+set -e
+
+# Run updates (updates pyproject files)
+uv run lfp-build sync
+
+# Stage any changes made by the sync so they land in THIS commit
+git add -A
+
+# Optional: tell the user what was staged
+if ! git diff --quiet --cached; then
+  echo "pre-commit: staged version updates."
+fi
+"""
 
 app = App()
 
@@ -52,7 +70,7 @@ def member(
     name
         The name of the new project (used for directory and package name).
     path
-        Optional parent directory within the workspace root. Defaults to root.
+        Optional parent directory within the workspace root. Defaults to `packages/`.
     project_dependency
         List of existing workspace projects to depend on.
     dependency
@@ -65,6 +83,8 @@ def member(
     # Ensure the specified path is within the workspace root
     if not path.is_relative_to(root_dir):
         raise ValueError(f"Path must be relative to root - root:{root_dir} path:{path}")
+
+    _ensure_git_and_hooks(root_dir)
 
     project_dir = path / name
     pyproject_path = project_dir / _config.PYPROJECT_FILE_NAME
@@ -120,12 +140,6 @@ def member(
     workspace.clear_metadata_cache()
 
 
-app.command(member, name="member")
-
-# Backwards compatible alias
-create = member
-
-
 def _resolve_gitignore_source(project_parent_dir: pathlib.Path) -> pathlib.Path | None:
     """
     Resolve the best local .gitignore source file for new projects.
@@ -158,6 +172,46 @@ def _copy_local_gitignore_template(
     source = _resolve_gitignore_source(project_parent_dir=project_parent_dir)
     if source:
         target.write_text(source.read_text())
+
+
+def _ensure_git_and_hooks(root_dir: pathlib.Path) -> None:
+    """
+    Ensure root_dir is a git repo and pre-commit hook wiring exists.
+    """
+    _ensure_git_repo(root_dir)
+    _ensure_pre_commit_hook(root_dir)
+    _enable_git_hooks(root_dir)
+
+
+def _ensure_git_repo(root_dir: pathlib.Path) -> None:
+    """
+    Initialize a git repository in root_dir when one does not exist.
+    """
+    if not (root_dir / ".git").exists():
+        subprocess.run(["git", "init"], cwd=root_dir, check=True)
+
+
+def _ensure_pre_commit_hook(root_dir: pathlib.Path) -> None:
+    """
+    Create .githooks/pre-commit with default sync behavior if missing.
+    """
+    pre_commit_path = root_dir / _PRE_COMMIT_HOOK
+    if pre_commit_path.exists():
+        return
+    pre_commit_path.parent.mkdir(parents=True, exist_ok=True)
+    pre_commit_path.write_text(_PRE_COMMIT_SCRIPT)
+    pre_commit_path.chmod(pre_commit_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+
+def _enable_git_hooks(root_dir: pathlib.Path) -> None:
+    """
+    Configure git to use .githooks as core.hooksPath for this repository.
+    """
+    subprocess.run(
+        ["git", "config", "core.hooksPath", _GIT_HOOKS_DIR.as_posix()],
+        cwd=root_dir,
+        check=True,
+    )
 
 
 @app.command
@@ -258,6 +312,12 @@ uvm = "uv run -m"
         os.chdir(old_cwd)
 
     LOG.info("Workspace project created: %s", project_dir)
+
+
+app.command(member, name="member")
+
+# Backwards compatible alias
+create = member
 
 
 if "__main__" == __name__:

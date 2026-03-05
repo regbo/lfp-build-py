@@ -55,7 +55,9 @@ def sync(
     member_project_tool
         Sync [tool.member-project] from root project to all member projects.
     member_project_dependencies
-        Sync internal member dependencies to use file:// paths and uv workspace sources.
+        Sync internal member dependencies and uv workspace sources. Dependency
+        format is controlled by `_config.MEMBER_PROJECT_DIRECT_REFERENCE.get()`
+        (plain names when False, `${PROJECT_ROOT}` file references when True).
     member_paths
         Sync member path patterns.
     reorder_pyproject
@@ -132,8 +134,8 @@ def _version():
     """
     Generate a version string based on git HEAD and working directory state.
 
-    Uses '0.0.1+g{rev}' format where {rev} is the short hash of HEAD
-    (or HEAD~1 if the working directory is modified).
+    Uses '0.0.1+g{rev}' format where {rev} is the short hash of HEAD when the
+    working tree is modified, or HEAD~1 when the tree is clean.
 
     If git is unavailable or the current directory is not a git repository,
     falls back to the base version string without a revision suffix.
@@ -197,10 +199,15 @@ def sync_member_project_dependencies(
     unfiltered_pyproject_tree: PyProjectTree, pyproject_tree: PyProjectTree
 ):
     """
-    Update internal dependencies within the workspace to use relative file:// paths.
+    Synchronize internal workspace dependencies and uv source entries.
 
-    This ensures that projects can correctly reference each other without
-    relying on external registry versions.
+    Dependency formatting is controlled by
+    `_config.MEMBER_PROJECT_DIRECT_REFERENCE.get()`:
+    - False: internal dependencies are plain names (for uv workspace resolution)
+    - True: internal dependencies use `file://${PROJECT_ROOT}/...` references
+
+    In both modes, `tool.uv.sources.<dep>.workspace = true` is maintained for
+    detected internal member dependencies.
     """
     if unfiltered_pyproject_tree.filtered:
         raise ValueError("Unfiltered workspace tree required for member project dependencies sync")
@@ -213,43 +220,32 @@ def _sync_member_project_dependencies(pyproject_tree: PyProjectTree, proj: PyPro
     Internal helper to synchronize dependencies and uv sources for a specific project.
     """
     direct_reference = _config.MEMBER_PROJECT_DIRECT_REFERENCE.get()
+    member_paths_by_name = {
+        pyproject_tree.name: pyproject_tree.root.path.parent,
+        **{name: member.path.parent for name, member in pyproject_tree.members.items()},
+    }
     member_dependencies: list[str] = []
     dependencies = proj.data.get("project", {}).get("dependencies", [])
     if dependencies:
         for idx, dependency in enumerate(dependencies):
-            dep = workspace.parse_dependency_name(str(dependency))
-            dep_proj = (
-                pyproject_tree.root
-                if dep == pyproject_tree.name
-                else pyproject_tree.members.get(dep, None)
+            normalized_dep, member_dependency_name = workspace.normalize_member_dependency(
+                dependency=str(dependency),
+                member_proj_dir=proj.path.parent,
+                member_paths_by_name=member_paths_by_name,
+                direct_reference=direct_reference,
             )
-            if dep_proj:
-                if direct_reference:
-                    dependencies[idx] = workspace.member_dependency(
-                        dep_name=dep,
-                        member_proj_dir=proj.path.parent,
-                        dep_proj_dir=dep_proj.path.parent,
-                    )
-                else:
-                    dependencies[idx] = dep
-                member_dependencies.append(dep)
+            if member_dependency_name is None:
+                continue
+            dependencies[idx] = normalized_dep
+            member_dependencies.append(member_dependency_name)
 
     source_table = proj.table("tool", "uv", "sources", create=bool(member_dependencies))
     if source_table is not None:
-        workspace_key = "workspace"
-        for dep in list(source_table.keys()):
-            workspace_value = source_table.get(dep, {}).get(workspace_key, None)
-            if workspace_value is True and dep not in member_dependencies:
-                source_table.remove(dep)
-                LOG.debug(
-                    "Removed source - key:%s proj:%s dependency:%s",
-                    workspace_key,
-                    proj,
-                    dep,
-                )
-        for member_dependency in member_dependencies:
-            source = {member_dependency: {workspace_key: True}}
-            source_table.update(source)
+        workspace.sync_workspace_sources(
+            source_table=source_table,
+            member_dependencies=member_dependencies,
+            proj_name=str(proj.path),
+        )
 
 
 def sync_member_paths(

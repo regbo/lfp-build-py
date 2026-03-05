@@ -20,11 +20,6 @@ a unified interface for workspace management. The CLI provides commands for:
 LOG = logs.logger(__name__)
 
 app = cyclopts.App(default_parameter=cyclopts.Parameter(negative=""))
-app.command(workspace_create.app, name="create")
-app.command(workspace_dist.app, name="dist")
-app.command(workspace_sync.app, name="sync")
-app.command(readme.app, name="readme")
-app.command(rename.app, name="rename")
 
 
 @app.meta.default
@@ -49,6 +44,13 @@ def launcher(
         os.chdir(working_directory)
 
     return app(tokens)
+
+
+app.command(workspace_create.app, name="create")
+app.command(workspace_dist.app, name="dist")
+app.command(workspace_sync.app, name="sync")
+app.command(readme.app, name="readme")
+app.command(rename.app, name="rename")
 
 
 def main():

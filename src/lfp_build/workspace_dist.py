@@ -37,6 +37,11 @@ def dist(
     """
     Build wheel artifacts for workspace projects.
 
+    When `_config.MEMBER_PROJECT_DIRECT_REFERENCE.get()` is True, built wheels
+    are inspected in the temporary output directory and workspace-local
+    `Requires-Dist: ... @ file://...` entries are normalized to plain package
+    requirements before copying artifacts to `out_dir`.
+
     Parameters
     ----------
     name
