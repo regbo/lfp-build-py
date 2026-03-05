@@ -440,7 +440,6 @@ Core dependencies:
 - `taplo`: TOML formatting
 - `cyclopts`: CLI framework
 - `tomlkit`: TOML manipulation
-- `mergedeep`: Deep merging of configurations
 - `dacite`: Dataclass conversion
 - `sitecustomize-entrypoints`: Automatic config initialization via `lfp_build._config:load` (loads `.dev.env` by default, override with `PYTHON_DOTENV_FILE`)
 

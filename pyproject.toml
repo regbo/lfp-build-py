@@ -24,10 +24,6 @@ dependencies = [
     "mergedeep",
     # Lint and format engine invoked by sync.
     "ruff",
-    # Type inference engine invoked by sync before Ruff.
-    "basedpyright",
-    # CST transformer used to apply inferred return types.
-    "libcst",
 ]
 
 [project.scripts]
@@ -49,9 +45,3 @@ ignore = ["ANN401"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["ANN001", "ANN002", "ANN003", "ANN202", "ANN201"]
-[tool.basedpyright]
-typeCheckingMode = "strict"
-reportMissingTypeStubs = false
-reportUnknownVariableType = false
-reportUnknownParameterType = false
-reportUnknownMemberType = false

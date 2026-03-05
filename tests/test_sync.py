@@ -1,5 +1,4 @@
 import pathlib
-import subprocess
 
 from lfp_build import _config, pyproject, workspace_create, workspace_sync
 
@@ -137,53 +136,3 @@ version = "0.0.0"
     assert "workspace = true" in pkg_a_text
 
 
-def test_infer_python_return_types_applies_stub_annotations(tmp_path, monkeypatch) -> None:
-    proj_dir = tmp_path / "proj"
-    package_dir = proj_dir / "src" / "demo_pkg"
-    package_dir.mkdir(parents=True)
-    source_path = package_dir / "__init__.py"
-    source_path.write_text(
-        """
-def name():
-    return "bob"
-"""
-    )
-
-    def _process_run(*args, **kwargs) -> str:
-        if args[:2] == ("basedpyright", "--createstub"):
-            stub_path = proj_dir / "typings" / "demo_pkg" / "__init__.pyi"
-            stub_path.parent.mkdir(parents=True, exist_ok=True)
-            stub_path.write_text("def name() -> str: ...\n")
-        return ""
-
-    monkeypatch.setattr(workspace_sync.util, "process_run", _process_run)
-    workspace_sync._infer_python_return_types_for_project(proj_dir, ["demo_pkg"])
-
-    assert "def name() -> str:" in source_path.read_text()
-    assert not (proj_dir / "typings").exists()
-
-
-def test_infer_python_return_types_cleans_stubs_on_failure(tmp_path, monkeypatch) -> None:
-    proj_dir = tmp_path / "proj"
-    package_dir = proj_dir / "src" / "demo_pkg"
-    package_dir.mkdir(parents=True)
-    (package_dir / "__init__.py").write_text("def name():\n    return 'bob'\n")
-
-    def _process_run(*args, **kwargs) -> str:
-        if args[:2] == ("basedpyright", "--createstub"):
-            stub_path = proj_dir / "typings" / "demo_pkg" / "__init__.pyi"
-            stub_path.parent.mkdir(parents=True, exist_ok=True)
-            stub_path.write_text("def name() -> str: ...\n")
-            raise subprocess.CalledProcessError(returncode=1, cmd=list(args))
-        return ""
-
-    monkeypatch.setattr(workspace_sync.util, "process_run", _process_run)
-
-    try:
-        workspace_sync._infer_python_return_types_for_project(proj_dir, ["demo_pkg"])
-    except subprocess.CalledProcessError:
-        pass
-    else:
-        raise AssertionError("Expected basedpyright stub generation failure")
-
-    assert not (proj_dir / "typings").exists()
