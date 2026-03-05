@@ -5,15 +5,15 @@ def test_create_project_command(tmp_path):
     workspace_create.project("agent-demo", path=tmp_path)
 
     root = tmp_path / "agent-demo"
-    assert (root / _config.PYROJECT_FILE_NAME).is_file()
+    assert (root / _config.PYPROJECT_FILE_NAME).is_file()
     assert (root / ".gitignore").is_file()
 
     common = root / "packages" / "common"
     assert common.is_dir()
-    assert (common / _config.PYROJECT_FILE_NAME).is_file()
+    assert (common / _config.PYPROJECT_FILE_NAME).is_file()
 
-    pyproject_text = (root / _config.PYROJECT_FILE_NAME).read_text()
-    assert '[tool.pixi.workspace]' in pyproject_text
+    pyproject_text = (root / _config.PYPROJECT_FILE_NAME).read_text()
+    assert "[tool.pixi.workspace]" in pyproject_text
     assert 'name = "agent-demo"' in pyproject_text
 
 
@@ -28,4 +28,3 @@ def test_create_project_copies_local_parent_gitignore(tmp_path, monkeypatch):
     project_root = parent / "agent-local-gitignore"
     assert (project_root / ".gitignore").is_file()
     assert (project_root / ".gitignore").read_text() == "dist/\n.cache/\n"
-

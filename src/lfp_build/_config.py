@@ -2,7 +2,10 @@ import functools
 import os
 import pathlib
 import subprocess
+from collections.abc import Callable
+from dataclasses import dataclass
 from os import PathLike
+from typing import Generic, TypeVar
 
 from dotenv import load_dotenv
 
@@ -18,23 +21,52 @@ The dotenv file defaults to `.dev.env` and can be overridden by setting the
 `PYTHON_DOTENV_FILE` environment variable.
 """
 
-PYROJECT_FILE_NAME = "pyproject.toml"
+PYPROJECT_FILE_NAME = "pyproject.toml"
 
-_ENV_FILE_NAME_ENVAR_NAME = "PYTHON_DOTENV_FILE"
-_ENV_FILE_NAME_DEFAULT = ".dev.env"
+_T = TypeVar("T")
+_ENVAR_CONFIG_PREFIX = "LFP_BUILD_"
 
 
+@dataclass
+class _EnvarConfig(Generic[_T]):
+    name: str
+    load_fn: Callable[[str | None], _T]
+
+    def get(self) -> _T:
+        value = os.getenv(_ENVAR_CONFIG_PREFIX + self.name, None)
+        if value is not None:
+            value = value.strip()
+        return self.load_fn(value)
+
+
+PYTHON_DOTENV_FILE = _EnvarConfig[str](name="PYTHON_DOTENV_FILE", load_fn=lambda v: v or ".dev.env")
+MEMBER_PROJECT_DIRECT_REFERENCE = _EnvarConfig[bool](
+    name="MEMBER_PROJECT_DIRECT_REFERENCE",
+    load_fn=lambda v: str(v).strip().lower() in {"true", "1", "yes", "on"} if v else False,
+)
+
+
+@functools.cache
 def load():
     _load_dotenv()
 
 
 def _load_dotenv():
-    env_file_name = os.getenv(_ENV_FILE_NAME_ENVAR_NAME, None) or _ENV_FILE_NAME_DEFAULT
+    env_file_name = PYTHON_DOTENV_FILE.get()
+
+    seen: set[pathlib.Path] = set()
+
     for dir_fn in (pathlib.Path.cwd, _root_dir):
-        if dir := dir_fn():
-            env_file = dir / env_file_name
+        if dir_path := dir_fn():
+            dir_path = dir_path.resolve()
+
+            if dir_path in seen:
+                continue
+            seen.add(dir_path)
+
+            env_file = dir_path / env_file_name
             if env_file.is_file():
-                load_dotenv(env_file)
+                load_dotenv(env_file, override=False)
 
 
 def _root_dir() -> pathlib.Path | None:
@@ -49,11 +81,11 @@ def _root_dir() -> pathlib.Path | None:
         return root_dir
     cur = pathlib.Path.cwd()
     while True:
-        if (cur / PYROJECT_FILE_NAME).is_file():
+        if (cur / PYPROJECT_FILE_NAME).is_file():
             return cur
         else:
             parent = cur.parent
-            if parent == cur:
+            if not parent or parent == cur:
                 break
             cur = parent
     return None
@@ -79,7 +111,7 @@ def _dir_command(*args: str) -> pathlib.Path | None:
             stderr=subprocess.DEVNULL,
         )
         if proc.returncode == 0:
-            return _dir(proc.stdout)
+            return _dir(proc.stdout.strip())
     except Exception:
         pass
     return None

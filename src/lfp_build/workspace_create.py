@@ -67,7 +67,7 @@ def member(
         raise ValueError(f"Path must be relative to root - root:{root_dir} path:{path}")
 
     project_dir = path / name
-    pyproject_path = project_dir / _config.PYROJECT_FILE_NAME
+    pyproject_path = project_dir / _config.PYPROJECT_FILE_NAME
 
     # Don't overwrite existing projects
     if pyproject_path.exists():
@@ -118,6 +118,7 @@ def member(
     workspace_sync.sync(new_pyprojects={name: pyproject.PyProject(pyproject_path)})
     LOG.info("Member project created: %s", name)
     workspace.clear_metadata_cache()
+
 
 app.command(member, name="member")
 
@@ -204,7 +205,7 @@ def project(
 
     lfp_build_dep = f"lfp-build @ git+{_LFP_BUILD_REPO_URL}"
 
-    root_pyproject = project_dir / _config.PYROJECT_FILE_NAME
+    root_pyproject = project_dir / _config.PYPROJECT_FILE_NAME
     root_pyproject.write_text(
         f"""[build-system]
 requires = ["uv_build>=0.9.6,<0.10.0"]

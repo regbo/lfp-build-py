@@ -5,9 +5,10 @@ import os
 import pathlib
 import shutil
 import subprocess
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field
 from tempfile import NamedTemporaryFile
-from typing import Any, Collection, Mapping
+from typing import Any
 from urllib.parse import urlparse
 
 import tomlkit
@@ -160,9 +161,7 @@ class PyProjectTree:
         """
         return [self.root, *self.members.values()]
 
-    def filter_members(
-        self, names: list[str] | None, required: bool = False
-    ) -> "PyProjectTree":
+    def filter_members(self, names: list[str] | None, required: bool = False) -> "PyProjectTree":
         """
         Create a new tree containing only the specified member projects.
 
@@ -184,7 +183,7 @@ class PyProjectTree:
             member_proj = self.members.get(name, None)
             if member_proj is None:
                 if required and name in names:
-                    raise ValueError("Member %s not found" % name)
+                    raise ValueError(f"Member {name} not found")
                 continue
             if name in names:
                 members_copy[name] = member_proj
@@ -267,9 +266,7 @@ def _git_repo_name(path: pathlib.Path) -> str | None:
     """
     args = ["git", "remote", "get-url", "origin"]
     cwd = path.parent if path is not None and path.is_file() else path
-    git_origin_url = util.process_run(
-        "git", "remote", "get-url", "origin", check=False, cwd=cwd
-    )
+    git_origin_url = util.process_run("git", "remote", "get-url", "origin", check=False, cwd=cwd)
     if git_origin_url:
         # Normalize SSH form to URL so urlparse can handle it
         if git_origin_url.startswith("git@"):
@@ -277,14 +274,10 @@ def _git_repo_name(path: pathlib.Path) -> str | None:
             git_origin_url = "ssh://" + git_origin_url.replace(":", "/", 1)
         git_origin_url_path = urlparse(git_origin_url).path
         if git_origin_url_path:
-            repo_name = (
-                git_origin_url_path.rstrip("/").rsplit("/", 1)[-1].removesuffix(".git")
-            )
+            repo_name = git_origin_url_path.rstrip("/").rsplit("/", 1)[-1].removesuffix(".git")
             if repo_name:
                 return repo_name
-    LOG.debug(
-        "Git remote url not found - git_origin_url:%s args:%s", git_origin_url, args
-    )
+    LOG.debug("Git remote url not found - git_origin_url:%s args:%s", git_origin_url, args)
     return None
 
 
@@ -293,7 +286,7 @@ def _file_path(path: pathlib.Path) -> pathlib.Path:
     Normalize a path to a pyproject.toml file, creating parent directories if needed.
     """
     if path.is_dir():
-        path = path / _config.PYROJECT_FILE_NAME
+        path = path / _config.PYPROJECT_FILE_NAME
     else:
         path.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -315,20 +308,14 @@ def _format(path: pathlib.Path):
         # Some taplo distributions fail on formatter options.
         # Retry without options so project creation can still proceed.
         if not _format_with_taplo(path, taplo_commands=taplo_commands, use_options=True):
-            LOG.warning(
-                "Taplo formatter options failed. Retrying with default taplo formatting."
-            )
-            if not _format_with_taplo(
-                path, taplo_commands=taplo_commands, use_options=False
-            ):
+            LOG.warning("Taplo formatter options failed. Retrying with default taplo formatting.")
+            if not _format_with_taplo(path, taplo_commands=taplo_commands, use_options=False):
                 _format_with_tombi(path, reason="Taplo formatting failed")
     else:
         _format_with_tombi(path)
 
 
-def _format_with_taplo(
-    path: pathlib.Path, taplo_commands: list[str], use_options: bool
-) -> bool:
+def _format_with_taplo(path: pathlib.Path, taplo_commands: list[str], use_options: bool) -> bool:
     """
     Format a TOML file with taplo.
 
@@ -377,16 +364,13 @@ def _format_with_taplo(
         return False
 
 
-
-
-def _format_with_tombi(path: pathlib.Path, reason: str="Taplo unavailable"):
+def _format_with_tombi(path: pathlib.Path, reason: str = "Taplo unavailable"):
     """
     Format a TOML file with tombi through uv tool run.
     """
     if os.name == "nt":
         LOG.warning(
-            "%s on Windows. "
-            "Skipping tombi fallback and leaving TOML unformatted.",
+            "%s on Windows. Skipping tombi fallback and leaving TOML unformatted.",
             reason,
         )
     else:
@@ -415,15 +399,12 @@ def _taplo_commands() -> list[str] | None:
     program = "taplo"
     for commands in [[program], ["uv", "tool", "run", "--", program]]:
         try:
-            if util.process_run(
-                commands[0], *commands[1:], "--version", stderr_log_level=None
-            ):
+            if util.process_run(commands[0], *commands[1:], "--version", stderr_log_level=None):
                 return commands
         except Exception:
             continue
     LOG.debug("Taplo unavailable")
     return None
-
 
 
 def _normalize_line_endings(path: pathlib.Path):
@@ -438,6 +419,7 @@ def _normalize_line_endings(path: pathlib.Path):
     if normalized_contents != contents:
         # Rewrite only when content changed to avoid unnecessary disk churn.
         path.write_bytes(normalized_contents)
+
 
 if __name__ == "__main__":
     print(_git_repo_name(pathlib.Path.cwd()))

@@ -6,7 +6,7 @@ import shlex
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from multiprocessing import cpu_count
 from pathlib import Path
-from typing import Pattern
+from re import Pattern
 
 from cyclopts import App
 from lfp_logging import logs
@@ -77,9 +77,7 @@ def update_cmd(
     def is_in_code_block(pos: int) -> bool:
         return any(start <= pos < end for start, end in code_ranges)
 
-    block_matches = [
-        m for m in _CMD_BLOCK_RE.finditer(content) if not is_in_code_block(m.start())
-    ]
+    block_matches = [m for m in _CMD_BLOCK_RE.finditer(content) if not is_in_code_block(m.start())]
     if not block_matches:
         LOG.info("No cmd blocks found")
         return

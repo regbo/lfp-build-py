@@ -29,7 +29,7 @@ def test_pyproject_tree(temp_workspace):
     # Create a member project
     pkg_dir = temp_workspace / "packages" / "pkg1"
     pkg_dir.mkdir(parents=True)
-    (pkg_dir / _config.PYROJECT_FILE_NAME).write_text(
+    (pkg_dir / _config.PYPROJECT_FILE_NAME).write_text(
         '[project]\nname = "pkg1"\nversion = "0.1.0"'
     )
 

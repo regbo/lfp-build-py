@@ -1,6 +1,7 @@
 import subprocess
 
 from lfp_logging import logs
+
 from lfp_build import _config, workspace
 
 LOG = logs.logger(__name__)
@@ -8,7 +9,7 @@ LOG = logs.logger(__name__)
 
 def _read_pyprojects(root) -> dict[str, str]:
     out: dict[str, str] = {}
-    for p in root.rglob(_config.PYROJECT_FILE_NAME):
+    for p in root.rglob(_config.PYPROJECT_FILE_NAME):
         try:
             out[str(p.relative_to(root))] = p.read_text()
         except Exception as e:
@@ -38,7 +39,7 @@ def test_metadata_repairs_missing_workspace_sources(tmp_path, monkeypatch):
     (root / "packages" / "a").mkdir(parents=True)
     (root / "packages" / "b").mkdir(parents=True)
 
-    (root / _config.PYROJECT_FILE_NAME).write_text(
+    (root / _config.PYPROJECT_FILE_NAME).write_text(
         """
 [project]
 name = "root-proj"
@@ -49,7 +50,7 @@ members = ["packages/*"]
 """
     )
 
-    (root / "packages" / "a" / _config.PYROJECT_FILE_NAME).write_text(
+    (root / "packages" / "a" / _config.PYPROJECT_FILE_NAME).write_text(
         """
 [project]
 name = "a"
@@ -57,7 +58,7 @@ version = "0.0.0"
 dependencies = ["b"]
 """
     )
-    (root / "packages" / "b" / _config.PYROJECT_FILE_NAME).write_text(
+    (root / "packages" / "b" / _config.PYPROJECT_FILE_NAME).write_text(
         """
 [project]
 name = "b"
@@ -88,7 +89,60 @@ version = "0.0.0"
     assert {"root-proj", "a", "b"}.issubset(names)
 
     # Verify that member 'a' had its uv workspace resolution repaired.
-    a_text = (root / "packages" / "a" / _config.PYROJECT_FILE_NAME).read_text()
+    a_text = (root / "packages" / "a" / _config.PYPROJECT_FILE_NAME).read_text()
+    assert 'dependencies = ["b"]' in a_text
+    assert "workspace = true" in a_text
+
+
+def test_metadata_repairs_missing_workspace_sources_with_direct_reference(tmp_path, monkeypatch):
+    """
+    When direct reference mode is enabled, metadata repair should inject file://
+    dependency references for workspace members.
+    """
+    monkeypatch.setenv("LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE", "1")
+    root = tmp_path
+    (root / "packages" / "a").mkdir(parents=True)
+    (root / "packages" / "b").mkdir(parents=True)
+
+    (root / _config.PYPROJECT_FILE_NAME).write_text(
+        """
+[project]
+name = "root-proj"
+version = "0.0.0"
+
+[tool.uv.workspace]
+members = ["packages/*"]
+"""
+    )
+    (root / "packages" / "a" / _config.PYPROJECT_FILE_NAME).write_text(
+        """
+[project]
+name = "a"
+version = "0.0.0"
+dependencies = ["b"]
+"""
+    )
+    (root / "packages" / "b" / _config.PYPROJECT_FILE_NAME).write_text(
+        """
+[project]
+name = "b"
+version = "0.0.0"
+"""
+    )
+
+    original_process_run = workspace.util.process_run
+    first = {"value": True}
+
+    def _process_run(*args, **kwargs):
+        if first["value"] and len(args) >= 3 and args[:3] == ("uv", "workspace", "metadata"):
+            first["value"] = False
+            raise subprocess.CalledProcessError(returncode=1, cmd=list(args))
+        return original_process_run(*args, **kwargs)
+
+    monkeypatch.setattr(workspace.util, "process_run", _process_run)
+
+    workspace.metadata(root)
+    a_text = (root / "packages" / "a" / _config.PYPROJECT_FILE_NAME).read_text()
     assert "file://${PROJECT_ROOT}/../b" in a_text
     assert "workspace = true" in a_text
 
@@ -99,7 +153,7 @@ def test_metadata_rolls_back_repairs_on_error(tmp_path, monkeypatch):
     (root / "packages" / "a").mkdir(parents=True)
     (root / "packages" / "b").mkdir(parents=True)
 
-    (root / _config.PYROJECT_FILE_NAME).write_text(
+    (root / _config.PYPROJECT_FILE_NAME).write_text(
         """
 [project]
 name = "root-proj"
@@ -110,7 +164,7 @@ members = ["packages/*"]
 """
     )
 
-    a_pyproject = root / "packages" / "a" / _config.PYROJECT_FILE_NAME
+    a_pyproject = root / "packages" / "a" / _config.PYPROJECT_FILE_NAME
     a_pyproject.write_text(
         """
 [project]
@@ -119,7 +173,7 @@ version = "0.0.0"
 dependencies = ["b"]
 """
     )
-    (root / "packages" / "b" / _config.PYROJECT_FILE_NAME).write_text(
+    (root / "packages" / "b" / _config.PYPROJECT_FILE_NAME).write_text(
         """
 [project]
 name = "b"

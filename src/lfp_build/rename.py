@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import os
 import pathlib
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Annotated, Iterable
+from typing import Annotated
 
 import cyclopts
 from lfp_logging import logs
@@ -105,9 +106,7 @@ def _walk_dirs(root: Path, workspace_root: Path) -> Iterable[Path]:
     for dirpath, dirnames, _ in os.walk(root, topdown=True):
         current = Path(dirpath)
 
-        dirnames[:] = [
-            d for d in dirnames if not _should_prune(current / d, workspace_root)
-        ]
+        dirnames[:] = [d for d in dirnames if not _should_prune(current / d, workspace_root)]
 
         yield current
 

@@ -104,6 +104,7 @@ def test_dist_rewrites_workspace_file_uri_requires_dist(monkeypatch, tmp_path):
             workspace.MetadataMember(name="common", path=common),
         ],
     )
+    monkeypatch.setenv("LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE", "1")
     monkeypatch.setattr(workspace_dist.workspace, "metadata", lambda: metadata)
 
     wheel_name = "dashboard-0.0.1-py3-none-any.whl"
@@ -147,6 +148,7 @@ def test_dist_keeps_non_workspace_file_uri_requires_dist(monkeypatch, tmp_path):
         workspace_root=workspace_root,
         members=[workspace.MetadataMember(name="dashboard", path=dashboard)],
     )
+    monkeypatch.setenv("LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE", "1")
     monkeypatch.setattr(workspace_dist.workspace, "metadata", lambda: metadata)
 
     wheel_name = "dashboard-0.0.1-py3-none-any.whl"
@@ -177,3 +179,36 @@ def test_dist_keeps_non_workspace_file_uri_requires_dist(monkeypatch, tmp_path):
         metadata_text = wheel_zip.read("dashboard-0.0.1.dist-info/METADATA").decode("utf-8")
     assert f"Requires-Dist: common @ file://{external_common}\n" in metadata_text
 
+
+def test_dist_skips_wheel_metadata_rewrite_when_direct_reference_off(monkeypatch, tmp_path):
+    workspace_root = tmp_path / "workspace"
+    dashboard = workspace_root / "dashboard"
+    dashboard.mkdir(parents=True)
+    metadata = workspace.Metadata(
+        workspace_root=workspace_root,
+        members=[workspace.MetadataMember(name="dashboard", path=dashboard)],
+    )
+    monkeypatch.delenv("LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE", raising=False)
+    monkeypatch.setattr(workspace_dist.workspace, "metadata", lambda: metadata)
+
+    def _normalize_wheels(**kwargs):
+        raise AssertionError("wheel metadata rewrite should be skipped when disabled")
+
+    monkeypatch.setattr(
+        workspace_dist,
+        "_normalize_wheel_metadata_for_workspace_paths",
+        _normalize_wheels,
+    )
+
+    wheel_name = "dashboard-0.0.1-py3-none-any.whl"
+
+    def _process_run(*args, **kwargs):
+        out_index = args.index("--out-dir")
+        temp_out_dir = pathlib.Path(args[out_index + 1])
+        temp_out_dir.mkdir(parents=True, exist_ok=True)
+        (temp_out_dir / wheel_name).write_text("wheel")
+        return ""
+
+    monkeypatch.setattr(workspace_dist.util, "process_run", _process_run)
+
+    workspace_dist.dist(out_dir=tmp_path / "dist")

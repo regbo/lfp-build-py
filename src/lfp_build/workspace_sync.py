@@ -1,17 +1,16 @@
 import logging
-import os
 import pathlib
-import re
 from collections import defaultdict
+from collections.abc import Collection
 from copy import deepcopy
-from typing import Annotated, Collection
+from typing import Annotated
 
 import cyclopts
 from cyclopts import App
 from lfp_logging import logs
 from mergedeep import merge
 
-from lfp_build import pyproject, util, workspace
+from lfp_build import _config, pyproject, util, workspace
 from lfp_build.pyproject import PyProject, PyProjectTree
 
 """
@@ -37,9 +36,7 @@ def sync(
     reorder_pyproject: bool = True,
     format_pyproject: bool = True,
     format_python: bool = True,
-    new_pyprojects: Annotated[
-        dict[str, PyProject] | None, cyclopts.Parameter(show=False)
-    ] = None,
+    new_pyprojects: Annotated[dict[str, PyProject] | None, cyclopts.Parameter(show=False)] = None,
 ):
     """
     Synchronize project configurations across the workspace.
@@ -189,9 +186,7 @@ def sync_member_project_tool(pyproject_tree: PyProjectTree):
     """
     Merge the [tool.member-project] configuration from root to all member projects.
     """
-    member_project_data = pyproject_tree.root.data.get("tool", {}).get(
-        "member-project", {}
-    )
+    member_project_data = pyproject_tree.root.data.get("tool", {}).get("member-project", {})
     LOG.debug("Member project data: %s", member_project_data)
     if member_project_data:
         for member in pyproject_tree.members.values():
@@ -208,9 +203,7 @@ def sync_member_project_dependencies(
     relying on external registry versions.
     """
     if unfiltered_pyproject_tree.filtered:
-        raise ValueError(
-            "Unfiltered workspace tree required for member project dependencies sync"
-        )
+        raise ValueError("Unfiltered workspace tree required for member project dependencies sync")
     for proj in pyproject_tree.projects():
         _sync_member_project_dependencies(unfiltered_pyproject_tree, proj)
 
@@ -219,22 +212,26 @@ def _sync_member_project_dependencies(pyproject_tree: PyProjectTree, proj: PyPro
     """
     Internal helper to synchronize dependencies and uv sources for a specific project.
     """
+    direct_reference = _config.MEMBER_PROJECT_DIRECT_REFERENCE.get()
     member_dependencies: list[str] = []
     dependencies = proj.data.get("project", {}).get("dependencies", [])
     if dependencies:
         for idx, dependency in enumerate(dependencies):
-            dep = workspace.parse_dependency_name(str(dependencies[idx]))
+            dep = workspace.parse_dependency_name(str(dependency))
             dep_proj = (
                 pyproject_tree.root
                 if dep == pyproject_tree.name
                 else pyproject_tree.members.get(dep, None)
             )
             if dep_proj:
-                dependencies[idx] = workspace.member_dependency(
-                    dep_name=dep,
-                    member_proj_dir=proj.path.parent,
-                    dep_proj_dir=dep_proj.path.parent,
-                )
+                if direct_reference:
+                    dependencies[idx] = workspace.member_dependency(
+                        dep_name=dep,
+                        member_proj_dir=proj.path.parent,
+                        dep_proj_dir=dep_proj.path.parent,
+                    )
+                else:
+                    dependencies[idx] = dep
                 member_dependencies.append(dep)
 
     source_table = proj.table("tool", "uv", "sources", create=bool(member_dependencies))
@@ -430,9 +427,7 @@ def _ruff_format(path: pathlib.Path):
         "format": [],
     }
     for arg, options in run_arg_options.items():
-        util.process_run(
-            "ruff", arg, *options, cwd=path, stdout_log_level=logging.DEBUG
-        )
+        util.process_run("ruff", arg, *options, cwd=path, stdout_log_level=logging.DEBUG)
 
 
 if "__main__" == __name__:

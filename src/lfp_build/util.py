@@ -2,7 +2,8 @@ import logging
 import pathlib
 import subprocess
 import threading
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 from lfp_logging import logs
 
@@ -56,9 +57,7 @@ def process_start(
             proc = subprocess.Popen(
                 commands,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL
-                if stderr_log_level is None
-                else subprocess.PIPE,
+                stderr=subprocess.DEVNULL if stderr_log_level is None else subprocess.PIPE,
                 text=True,
                 cwd=cwd,
                 env=env,
@@ -118,9 +117,7 @@ def process_start(
         if thread is not None:
             thread.join()
         if check and proc.returncode != 0:
-            raise subprocess.CalledProcessError(
-                returncode=proc.returncode, cmd=proc.args
-            )
+            raise subprocess.CalledProcessError(returncode=proc.returncode, cmd=proc.args)
 
 
 def process_run(*args, strip: bool = True, **kwargs) -> str:

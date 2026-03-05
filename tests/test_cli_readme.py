@@ -19,7 +19,7 @@ def test_cli_help():
     # Cyclopts apps are just callables. We can capture stdout.
     import io
     from contextlib import redirect_stdout
-    
+
     f = io.StringIO()
     with redirect_stdout(f):
         _run_cli(["--help"])

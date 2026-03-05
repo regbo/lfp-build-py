@@ -132,7 +132,7 @@ def _rollback_files(originals: dict[pathlib.Path, str]) -> None:
             continue
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _metadata_uv(cwd: pathlib.Path) -> Metadata:
     """
     Retrieve and parse metadata from the uv workspace.
@@ -180,11 +180,9 @@ def _metadata_scan(cwd: pathlib.Path) -> Metadata:
     if root is None:
         raise ValueError(f"Workspace root not found from cwd={cwd}")
 
-    root_pyproject = root / _config.PYROJECT_FILE_NAME
+    root_pyproject = root / _config.PYPROJECT_FILE_NAME
     config = _load_toml(root_pyproject)
-    workspace_cfg = (
-        config.get("tool", {}).get("uv", {}).get("workspace", {}) if config else {}
-    )
+    workspace_cfg = config.get("tool", {}).get("uv", {}).get("workspace", {}) if config else {}
     member_patterns = list(workspace_cfg.get("members", []) or [])
     exclude_patterns = list(workspace_cfg.get("exclude", []) or [])
 
@@ -195,16 +193,12 @@ def _metadata_scan(cwd: pathlib.Path) -> Metadata:
                 continue
             if any(path.relative_to(root).match(str(ex)) for ex in exclude_patterns):
                 continue
-            if (path / _config.PYROJECT_FILE_NAME).is_file():
+            if (path / _config.PYPROJECT_FILE_NAME).is_file():
                 member_dirs.add(path)
 
     def _project_name(pyproject_path: pathlib.Path) -> str:
         data = _load_toml(pyproject_path)
-        return (
-            data.get("project", {}).get("name")
-            if data
-            else pyproject_path.parent.name
-        )
+        return data.get("project", {}).get("name") if data else pyproject_path.parent.name
 
     members: list[MetadataMember] = []
     # Include root itself as a member entry (uv does this).
@@ -212,7 +206,7 @@ def _metadata_scan(cwd: pathlib.Path) -> Metadata:
     members.append(MetadataMember(name=root_name, path=root))
 
     for member_dir in sorted(member_dirs):
-        pyproject_path = member_dir / _config.PYROJECT_FILE_NAME
+        pyproject_path = member_dir / _config.PYPROJECT_FILE_NAME
         members.append(MetadataMember(name=_project_name(pyproject_path), path=member_dir))
 
     return Metadata(workspace_root=root, members=members)
@@ -230,12 +224,13 @@ def _repair_workspace_sources(metadata_obj: Metadata) -> dict[pathlib.Path, str]
     except Exception:
         return {}
 
+    direct_reference = _config.MEMBER_PROJECT_DIRECT_REFERENCE.get()
     name_to_dir = {m.name: m.path for m in metadata_obj.members}
     member_names = set(name_to_dir.keys())
     originals: dict[pathlib.Path, str] = {}
 
     for member in metadata_obj.members:
-        pyproject_path = member.path / _config.PYROJECT_FILE_NAME
+        pyproject_path = member.path / _config.PYPROJECT_FILE_NAME
         if not pyproject_path.is_file():
             continue
 
@@ -258,11 +253,14 @@ def _repair_workspace_sources(metadata_obj: Metadata) -> dict[pathlib.Path, str]
             if dep_name not in member_names:
                 continue
             dep_dir = name_to_dir[dep_name]
-            deps[idx] = member_dependency(
-                dep_name=dep_name,
-                member_proj_dir=member_dir,
-                dep_proj_dir=dep_dir,
-            )
+            if direct_reference:
+                deps[idx] = member_dependency(
+                    dep_name=dep_name,
+                    member_proj_dir=member_dir,
+                    dep_proj_dir=dep_dir,
+                )
+            else:
+                deps[idx] = dep_name
             updated = True
             src = sources_tbl.setdefault(dep_name, tomlkit.table())
             if src.get("workspace", None) is not True:
@@ -283,7 +281,7 @@ def _repair_workspace_sources(metadata_obj: Metadata) -> dict[pathlib.Path, str]
 def _find_workspace_root(cwd: pathlib.Path) -> pathlib.Path | None:
     cur = cwd
     while True:
-        pyproject_path = cur / _config.PYROJECT_FILE_NAME
+        pyproject_path = cur / _config.PYPROJECT_FILE_NAME
         if pyproject_path.is_file():
             data = _load_toml(pyproject_path)
             if data.get("tool", {}).get("uv", {}).get("workspace", None) is not None:

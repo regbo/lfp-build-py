@@ -9,7 +9,7 @@ import zipfile
 from cyclopts import App
 from lfp_logging import logs
 
-from lfp_build import util, workspace
+from lfp_build import _config, util, workspace
 
 """
 Build distribution artifacts for each project in a uv workspace.
@@ -49,10 +49,9 @@ def dist(
     """
     metadata = workspace.metadata()
     members = _resolve_members(name=name, metadata=metadata)
+    direct_reference = _config.MEMBER_PROJECT_DIRECT_REFERENCE.get()
     workspace_root = metadata.workspace_root.resolve(strict=False)
-    workspace_member_paths = {
-        member.path.resolve(strict=False) for member in metadata.members
-    }
+    workspace_member_paths = {member.path.resolve(strict=False) for member in metadata.members}
     output_dir = out_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -70,11 +69,12 @@ def dist(
                 cwd=project_dir,
                 program_name=f"uv build ({member.name})",
             )
-            _normalize_wheel_metadata_for_workspace_paths(
-                wheel_dir=temp_out_dir,
-                workspace_root=workspace_root,
-                workspace_member_paths=workspace_member_paths,
-            )
+            if direct_reference:
+                _normalize_wheel_metadata_for_workspace_paths(
+                    wheel_dir=temp_out_dir,
+                    workspace_root=workspace_root,
+                    workspace_member_paths=workspace_member_paths,
+                )
             _copy_overwrite(source_dir=temp_out_dir, destination_dir=output_dir)
 
 
@@ -261,4 +261,3 @@ def _replace_wheel_member(
     finally:
         if temp_wheel.exists():
             temp_wheel.unlink()
-

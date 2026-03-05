@@ -6,8 +6,7 @@ import tempfile
 
 import pytest
 
-from lfp_build import pyproject
-from lfp_build import _config
+from lfp_build import _config, pyproject
 
 
 @pytest.fixture
@@ -25,7 +24,7 @@ def temp_workspace():
 
     # Create root pyproject.toml
     # Added empty exclude list to avoid crash in _workspace_member_paths
-    root_pyproject = tmp_dir / _config.PYROJECT_FILE_NAME
+    root_pyproject = tmp_dir / _config.PYPROJECT_FILE_NAME
     root_pyproject.write_text("""
 [project]
 name = "test-workspace"
@@ -58,7 +57,7 @@ def sample_pyproject(temp_workspace):
     """Provide a path to a sample pyproject.toml."""
     path = temp_workspace / "sample-project"
     path.mkdir()
-    pyproject_path = path / _config.PYROJECT_FILE_NAME
+    pyproject_path = path / _config.PYPROJECT_FILE_NAME
     pyproject_path.write_text("""
 [project]
 name = "sample-project"
