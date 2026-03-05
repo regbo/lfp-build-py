@@ -23,7 +23,7 @@ def process_start(
     program_name: str | None = None,
     stdout_log_level: int | None = None,
     stderr_log_level: int | None = logging.DEBUG,
-    stderr_log_background: bool = False,
+    stderr_log_background: bool = True,
     check: bool = True,
     cwd: pathlib.Path | None = None,
     env: dict[str, str] | None = None,
@@ -94,19 +94,22 @@ def process_start(
         if stderr_log_level is not None:
 
             def _log_stderr() -> None:
+                if proc.stderr is None:
+                    return
                 for line in _read_stream(proc.stderr):
                     _log_line(line, stderr_log_level)
 
             if stderr_log_background:
-                thread = threading.Thread(target=_log_stderr)
+                thread = threading.Thread(target=_log_stderr, daemon=True)
                 thread.start()
             else:
                 _log_stderr()
 
-        for line in _read_stream(proc.stdout):
-            if stdout_log_level is not None:
-                _log_line(line, stdout_log_level)
-            yield line
+        if proc.stdout is not None:
+            for line in _read_stream(proc.stdout):
+                if stdout_log_level is not None:
+                    _log_line(line, stdout_log_level)
+                yield line
     finally:
         if proc.poll() is None:
             try:

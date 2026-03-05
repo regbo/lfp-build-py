@@ -5,10 +5,11 @@ import pathlib
 import signal
 import subprocess
 import sys
+import types
 from collections.abc import Callable
 from dataclasses import dataclass
 from os import PathLike
-from typing import Generic, TypeVar
+from typing import Generic, Never, TypeVar
 
 from dotenv import load_dotenv
 
@@ -73,8 +74,9 @@ def _load_dotenv() -> None:
                 load_dotenv(env_file, override=False)
 
 
-def _dump(sig, frame):
+def _dump(sig: int, frame: types.FrameType | None) -> Never:
     faulthandler.dump_traceback(file=sys.stderr, all_threads=True)
+    raise KeyboardInterrupt
 
 
 def _install_sigint_traceback_dump() -> None:
