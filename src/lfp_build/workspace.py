@@ -5,6 +5,7 @@ import pathlib
 import re
 import subprocess
 from dataclasses import dataclass
+from typing import Any
 
 from lfp_logging import logs
 
@@ -123,7 +124,7 @@ def normalize_member_dependency(
 
 
 def sync_workspace_sources(
-    *, source_table, member_dependencies: list[str], proj_name: str | None = None
+    *, source_table: Any, member_dependencies: list[str], proj_name: str | None = None
 ) -> None:
     """
     Ensure `tool.uv.sources.<dep>.workspace = true` for active member deps.
@@ -370,7 +371,7 @@ def _load_toml(path: pathlib.Path) -> dict:
         return {}
 
 
-def _load_tomlkit(path: pathlib.Path) -> "TOMLDocument":  # pyright: ignore[reportUndefinedVariable]
+def _load_tomlkit(path: pathlib.Path) -> Any:
     import tomlkit
 
     with path.open("rb") as f:

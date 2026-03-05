@@ -385,7 +385,7 @@ def _workspace_member_paths(
 def sync_pyproject_order(
     pyproject_tree: PyProjectTree,
 ) -> None:
-    def _order(proj: PyProject):
+    def _order(proj: PyProject) -> PyProject:
         data = proj.data  # tomlkit document
 
         items = list(data.items())
