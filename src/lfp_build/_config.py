@@ -46,7 +46,7 @@ class _EnvarConfig(Generic[_T]):
 PYTHON_DOTENV_FILE = _EnvarConfig[str](name="PYTHON_DOTENV_FILE", load_fn=lambda v: v or ".dev.env")
 MEMBER_PROJECT_DIRECT_REFERENCE = _EnvarConfig[bool](
     name="MEMBER_PROJECT_DIRECT_REFERENCE",
-    load_fn=lambda v: str(v).strip().lower() in {"true", "1", "yes", "on"} if v else False,
+    load_fn=lambda v: True if v is None else v.strip().lower() in {"true", "1", "yes", "on"}
 )
 
 
