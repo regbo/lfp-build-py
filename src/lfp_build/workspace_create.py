@@ -58,7 +58,7 @@ def member(
         list[str] | None,
         cyclopts.Parameter(alias="-d", negative=""),
     ] = None,
-) -> None:
+):
     """
     Create a new member project in the workspace.
 
@@ -162,7 +162,7 @@ def _resolve_gitignore_source(project_parent_dir: pathlib.Path) -> pathlib.Path 
 
 def _copy_local_gitignore_template(
     target_dir: pathlib.Path, project_parent_dir: pathlib.Path
-) -> None:
+):
     """
     Copy a local .gitignore template to target_dir if missing.
     """
@@ -174,7 +174,7 @@ def _copy_local_gitignore_template(
         target.write_text(source.read_text())
 
 
-def _ensure_git_and_hooks(root_dir: pathlib.Path) -> None:
+def _ensure_git_and_hooks(root_dir: pathlib.Path):
     """
     Ensure root_dir is a git repo and pre-commit hook wiring exists.
     """
@@ -183,7 +183,7 @@ def _ensure_git_and_hooks(root_dir: pathlib.Path) -> None:
     _enable_git_hooks(root_dir)
 
 
-def _ensure_git_repo(root_dir: pathlib.Path) -> None:
+def _ensure_git_repo(root_dir: pathlib.Path):
     """
     Initialize a git repository in root_dir when one does not exist.
     """
@@ -191,7 +191,7 @@ def _ensure_git_repo(root_dir: pathlib.Path) -> None:
         subprocess.run(["git", "init"], cwd=root_dir, check=True)
 
 
-def _ensure_pre_commit_hook(root_dir: pathlib.Path) -> None:
+def _ensure_pre_commit_hook(root_dir: pathlib.Path):
     """
     Create .githooks/pre-commit with default sync behavior if missing.
     """
@@ -200,10 +200,15 @@ def _ensure_pre_commit_hook(root_dir: pathlib.Path) -> None:
         return
     pre_commit_path.parent.mkdir(parents=True, exist_ok=True)
     pre_commit_path.write_text(_PRE_COMMIT_SCRIPT)
-    pre_commit_path.chmod(pre_commit_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    pre_commit_path.chmod(
+        pre_commit_path.stat().st_mode
+        | stat.S_IXUSR
+        | stat.S_IXGRP
+        | stat.S_IXOTH
+    )
 
 
-def _enable_git_hooks(root_dir: pathlib.Path) -> None:
+def _enable_git_hooks(root_dir: pathlib.Path):
     """
     Configure git to use .githooks as core.hooksPath for this repository.
     """
@@ -230,7 +235,7 @@ def project(
         bool,
         cyclopts.Parameter(alias="-f", negative=""),
     ] = False,
-) -> None:
+):
     """
     Create a new workspace root project.
 

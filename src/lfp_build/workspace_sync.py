@@ -130,7 +130,7 @@ def sync_version(projs: Collection[PyProject], version: str | None = None):
             )
 
 
-def _version():
+def _version() -> str:
     """
     Generate a version string based on git HEAD and working directory state.
 

@@ -17,7 +17,7 @@ def _read_pyprojects(root) -> dict[str, str]:
     return out
 
 
-def _log_pyproject_diffs(before: dict[str, str], after: dict[str, str]) -> None:
+def _log_pyproject_diffs(before: dict[str, str], after: dict[str, str]):
     keys = sorted(set(before) | set(after))
     for k in keys:
         b = before.get(k)
