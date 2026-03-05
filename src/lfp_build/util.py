@@ -2,9 +2,8 @@ import logging
 import pathlib
 import subprocess
 import threading
-from collections.abc import Iterator, Mapping
-from copy import deepcopy
-from typing import Any
+from collections.abc import Iterator
+from typing import IO, Any, AnyStr
 
 from lfp_logging import logs
 
@@ -23,10 +22,10 @@ def process_start(
     program_name: str | None = None,
     stdout_log_level: int | None = None,
     stderr_log_level: int | None = logging.DEBUG,
-    stderr_log_background: bool = True,
+    stderr_log_background: bool = False,
     check: bool = True,
-    cwd: pathlib.Path | None = None,
-    env: dict[str, str] | None = None,
+    cwd: pathlib.Path = None,
+    env: dict | None = None,
 ) -> Iterator[str]:
     """
     Start a subprocess and yield its stdout line by line.
@@ -48,40 +47,22 @@ def process_start(
     Yields:
         Lines from stdout as they are produced
     """
-    base_commands = [str(c) for c in [program, *args]]
+    commands = [str(c) for c in [program, *args]]
+    proc = subprocess.Popen(
+        commands,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL if stderr_log_level is None else subprocess.PIPE,
+        text=True,
+        cwd=cwd,
+        env=env,
+        bufsize=1,
+    )
 
-    proc: subprocess.Popen[str] | None = None
-    errors: list[BaseException] = []
-    for prefix in (None, ["uvx"]):
-        commands = base_commands if prefix is None else [*prefix, *base_commands]
-        try:
-            proc = subprocess.Popen(
-                commands,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL if stderr_log_level is None else subprocess.PIPE,
-                text=True,
-                cwd=cwd,
-                env=env,
-                bufsize=1,
-            )
-            break
-        except FileNotFoundError as e:
-            errors.append(e)
-            proc = None
-            continue
-
-    if proc is None:
-        raise FileNotFoundError(
-            "Failed to start process. Tried direct execution and `uvx run` fallback. "
-            f"direct_error={errors[0]!r} uvx_error={errors[1]!r}"
-        )
-
-    commands = list(proc.args) if isinstance(proc.args, (list, tuple)) else [str(proc.args)]
-
-    def _read_stream(stream: Iterator[str]) -> Iterator[str]:
-        for line in stream:
-            if line:
-                yield line[:-1]
+    def _read_stream(stream: IO[AnyStr] | None) -> Iterator[str]:
+        if stream is not None:
+            for line in stream:
+                if line:
+                    yield line[:-1]
 
     def _log_line(line: str, log_level: int) -> None:
         LOG.log(
@@ -94,22 +75,19 @@ def process_start(
         if stderr_log_level is not None:
 
             def _log_stderr() -> None:
-                if proc.stderr is None:
-                    return
                 for line in _read_stream(proc.stderr):
                     _log_line(line, stderr_log_level)
 
             if stderr_log_background:
-                thread = threading.Thread(target=_log_stderr, daemon=True)
+                thread = threading.Thread(target=_log_stderr)
                 thread.start()
             else:
                 _log_stderr()
 
-        if proc.stdout is not None:
-            for line in _read_stream(proc.stdout):
-                if stdout_log_level is not None:
-                    _log_line(line, stdout_log_level)
-                yield line
+        for line in _read_stream(proc.stdout):
+            if stdout_log_level is not None:
+                _log_line(line, stdout_log_level)
+            yield line
     finally:
         if proc.poll() is None:
             try:
@@ -138,22 +116,6 @@ def process_run(*args: Any, strip: bool = True, **kwargs: Any) -> str:
     """
     std_out = "\n".join(process_start(*args, **kwargs))
     return std_out.strip() if strip else std_out
-
-
-def merge_mapping(target: Any, source: Mapping[str, Any]) -> Any:
-    """
-    Recursively merge mapping values from source into target.
-
-    Existing nested mappings are merged in place. Non-mapping values are
-    replaced with a deep copy from source.
-    """
-    for key, value in source.items():
-        target_value = target.get(key, None)
-        if isinstance(target_value, Mapping) and isinstance(value, Mapping):
-            merge_mapping(target_value, value)
-        else:
-            target[key] = deepcopy(value)
-    return target
 
 
 if __name__ == "__main__":
