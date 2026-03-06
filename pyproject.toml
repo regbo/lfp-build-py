@@ -6,6 +6,7 @@ build-backend = "uv_build"
 name = "lfp-build"
 version = "0.0.7"
 description = "Local build utilities"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     # Build and workspace command orchestration backend.
