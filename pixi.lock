@@ -47,7 +47,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0e/61/66938bbb5fc52dbdf84594873d5b51fb1f7c7794e9c0f5bd885f30bc507b/idna-3.11-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/2d/bc/1c8f980e914223185019c9efc56d1993198c87c03107b545f4845d1c2856/lfp_logging-0.0.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/87/48/7eec5d279a9ecd06c46631b8e09808970c51a3eefcbc55afe1954b7920a1/lfp_logging-0.0.5-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/0a/2f/09c66ce9d718559145cd0c6b60f09fc793b3b5b23c038d94443c72cebbca/lfp_types-0.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/94/54/e7d793b573f298e1c9013b8c4dade17d481164aa517d1d7148619c2cedbf/markdown_it_py-4.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2c/19/04f9b178c2d8a15b076c8b5140708fa6ffc5601fb6f1e975537072df5b2a/mergedeep-1.3.4-py3-none-any.whl
@@ -112,7 +113,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0e/61/66938bbb5fc52dbdf84594873d5b51fb1f7c7794e9c0f5bd885f30bc507b/idna-3.11-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/2d/bc/1c8f980e914223185019c9efc56d1993198c87c03107b545f4845d1c2856/lfp_logging-0.0.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/87/48/7eec5d279a9ecd06c46631b8e09808970c51a3eefcbc55afe1954b7920a1/lfp_logging-0.0.5-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/0a/2f/09c66ce9d718559145cd0c6b60f09fc793b3b5b23c038d94443c72cebbca/lfp_types-0.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/94/54/e7d793b573f298e1c9013b8c4dade17d481164aa517d1d7148619c2cedbf/markdown_it_py-4.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2c/19/04f9b178c2d8a15b076c8b5140708fa6ffc5601fb6f1e975537072df5b2a/mergedeep-1.3.4-py3-none-any.whl
@@ -169,7 +171,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0e/61/66938bbb5fc52dbdf84594873d5b51fb1f7c7794e9c0f5bd885f30bc507b/idna-3.11-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/2d/bc/1c8f980e914223185019c9efc56d1993198c87c03107b545f4845d1c2856/lfp_logging-0.0.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/87/48/7eec5d279a9ecd06c46631b8e09808970c51a3eefcbc55afe1954b7920a1/lfp_logging-0.0.5-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/0a/2f/09c66ce9d718559145cd0c6b60f09fc793b3b5b23c038d94443c72cebbca/lfp_types-0.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/94/54/e7d793b573f298e1c9013b8c4dade17d481164aa517d1d7148619c2cedbf/markdown_it_py-4.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2c/19/04f9b178c2d8a15b076c8b5140708fa6ffc5601fb6f1e975537072df5b2a/mergedeep-1.3.4-py3-none-any.whl
@@ -227,7 +230,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0e/61/66938bbb5fc52dbdf84594873d5b51fb1f7c7794e9c0f5bd885f30bc507b/idna-3.11-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/2d/bc/1c8f980e914223185019c9efc56d1993198c87c03107b545f4845d1c2856/lfp_logging-0.0.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/87/48/7eec5d279a9ecd06c46631b8e09808970c51a3eefcbc55afe1954b7920a1/lfp_logging-0.0.5-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/0a/2f/09c66ce9d718559145cd0c6b60f09fc793b3b5b23c038d94443c72cebbca/lfp_types-0.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/94/54/e7d793b573f298e1c9013b8c4dade17d481164aa517d1d7148619c2cedbf/markdown_it_py-4.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2c/19/04f9b178c2d8a15b076c8b5140708fa6ffc5601fb6f1e975537072df5b2a/mergedeep-1.3.4-py3-none-any.whl
@@ -287,7 +291,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0e/61/66938bbb5fc52dbdf84594873d5b51fb1f7c7794e9c0f5bd885f30bc507b/idna-3.11-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/2d/bc/1c8f980e914223185019c9efc56d1993198c87c03107b545f4845d1c2856/lfp_logging-0.0.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/87/48/7eec5d279a9ecd06c46631b8e09808970c51a3eefcbc55afe1954b7920a1/lfp_logging-0.0.5-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/0a/2f/09c66ce9d718559145cd0c6b60f09fc793b3b5b23c038d94443c72cebbca/lfp_types-0.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/94/54/e7d793b573f298e1c9013b8c4dade17d481164aa517d1d7148619c2cedbf/markdown_it_py-4.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2c/19/04f9b178c2d8a15b076c8b5140708fa6ffc5601fb6f1e975537072df5b2a/mergedeep-1.3.4-py3-none-any.whl
@@ -360,7 +365,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0e/61/66938bbb5fc52dbdf84594873d5b51fb1f7c7794e9c0f5bd885f30bc507b/idna-3.11-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/2d/bc/1c8f980e914223185019c9efc56d1993198c87c03107b545f4845d1c2856/lfp_logging-0.0.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/87/48/7eec5d279a9ecd06c46631b8e09808970c51a3eefcbc55afe1954b7920a1/lfp_logging-0.0.5-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/0a/2f/09c66ce9d718559145cd0c6b60f09fc793b3b5b23c038d94443c72cebbca/lfp_types-0.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/94/54/e7d793b573f298e1c9013b8c4dade17d481164aa517d1d7148619c2cedbf/markdown_it_py-4.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2c/19/04f9b178c2d8a15b076c8b5140708fa6ffc5601fb6f1e975537072df5b2a/mergedeep-1.3.4-py3-none-any.whl
@@ -425,7 +431,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0e/61/66938bbb5fc52dbdf84594873d5b51fb1f7c7794e9c0f5bd885f30bc507b/idna-3.11-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/2d/bc/1c8f980e914223185019c9efc56d1993198c87c03107b545f4845d1c2856/lfp_logging-0.0.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/87/48/7eec5d279a9ecd06c46631b8e09808970c51a3eefcbc55afe1954b7920a1/lfp_logging-0.0.5-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/0a/2f/09c66ce9d718559145cd0c6b60f09fc793b3b5b23c038d94443c72cebbca/lfp_types-0.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/94/54/e7d793b573f298e1c9013b8c4dade17d481164aa517d1d7148619c2cedbf/markdown_it_py-4.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2c/19/04f9b178c2d8a15b076c8b5140708fa6ffc5601fb6f1e975537072df5b2a/mergedeep-1.3.4-py3-none-any.whl
@@ -482,7 +489,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0e/61/66938bbb5fc52dbdf84594873d5b51fb1f7c7794e9c0f5bd885f30bc507b/idna-3.11-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/2d/bc/1c8f980e914223185019c9efc56d1993198c87c03107b545f4845d1c2856/lfp_logging-0.0.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/87/48/7eec5d279a9ecd06c46631b8e09808970c51a3eefcbc55afe1954b7920a1/lfp_logging-0.0.5-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/0a/2f/09c66ce9d718559145cd0c6b60f09fc793b3b5b23c038d94443c72cebbca/lfp_types-0.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/94/54/e7d793b573f298e1c9013b8c4dade17d481164aa517d1d7148619c2cedbf/markdown_it_py-4.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2c/19/04f9b178c2d8a15b076c8b5140708fa6ffc5601fb6f1e975537072df5b2a/mergedeep-1.3.4-py3-none-any.whl
@@ -540,7 +548,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0e/61/66938bbb5fc52dbdf84594873d5b51fb1f7c7794e9c0f5bd885f30bc507b/idna-3.11-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/2d/bc/1c8f980e914223185019c9efc56d1993198c87c03107b545f4845d1c2856/lfp_logging-0.0.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/87/48/7eec5d279a9ecd06c46631b8e09808970c51a3eefcbc55afe1954b7920a1/lfp_logging-0.0.5-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/0a/2f/09c66ce9d718559145cd0c6b60f09fc793b3b5b23c038d94443c72cebbca/lfp_types-0.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/94/54/e7d793b573f298e1c9013b8c4dade17d481164aa517d1d7148619c2cedbf/markdown_it_py-4.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2c/19/04f9b178c2d8a15b076c8b5140708fa6ffc5601fb6f1e975537072df5b2a/mergedeep-1.3.4-py3-none-any.whl
@@ -600,7 +609,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0e/61/66938bbb5fc52dbdf84594873d5b51fb1f7c7794e9c0f5bd885f30bc507b/idna-3.11-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/2d/bc/1c8f980e914223185019c9efc56d1993198c87c03107b545f4845d1c2856/lfp_logging-0.0.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/87/48/7eec5d279a9ecd06c46631b8e09808970c51a3eefcbc55afe1954b7920a1/lfp_logging-0.0.5-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/0a/2f/09c66ce9d718559145cd0c6b60f09fc793b3b5b23c038d94443c72cebbca/lfp_types-0.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/94/54/e7d793b573f298e1c9013b8c4dade17d481164aa517d1d7148619c2cedbf/markdown_it_py-4.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2c/19/04f9b178c2d8a15b076c8b5140708fa6ffc5601fb6f1e975537072df5b2a/mergedeep-1.3.4-py3-none-any.whl
@@ -949,8 +959,8 @@ packages:
   timestamp: 1770267209884
 - pypi: ./
   name: lfp-build
-  version: 0.0.20
-  sha256: 42d012122fd719c864e7c00cdb7ce6f5e31dc5ae1507080f72b1c166df5702f7
+  version: 0.0.21
+  sha256: 1be4282c50104d66703c46c87644ae1f91641087b7aa0856d3676657a31a271d
   requires_dist:
   - uv>=0.9.9
   - cyclopts
@@ -961,10 +971,17 @@ packages:
   - mergedeep
   - ruff
   requires_python: '>=3.11,<3.14'
-- pypi: https://files.pythonhosted.org/packages/2d/bc/1c8f980e914223185019c9efc56d1993198c87c03107b545f4845d1c2856/lfp_logging-0.0.4-py3-none-any.whl
+- pypi: https://files.pythonhosted.org/packages/87/48/7eec5d279a9ecd06c46631b8e09808970c51a3eefcbc55afe1954b7920a1/lfp_logging-0.0.5-py3-none-any.whl
   name: lfp-logging
-  version: 0.0.4
-  sha256: d04834fa606096a44b4b86f1612152ebde0dda26c9568b902dc5376f6820bee9
+  version: 0.0.5
+  sha256: cede0ed0793c849fbfaa5ba0173c83ad10d2068e186cc8cd390c16981431b830
+  requires_dist:
+  - lfp-types>=0.0.4
+  requires_python: '>=3.9'
+- pypi: https://files.pythonhosted.org/packages/0a/2f/09c66ce9d718559145cd0c6b60f09fc793b3b5b23c038d94443c72cebbca/lfp_types-0.0.7-py3-none-any.whl
+  name: lfp-types
+  version: 0.0.7
+  sha256: d618dfa3e29a71f5b7cf44878cd736892c68630f408d8120608bf1d6deb84bd0
   requires_python: '>=3.9'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/libexpat-2.7.4-hecca717_0.conda
   sha256: d78f1d3bea8c031d2f032b760f36676d87929b18146351c4464c66b0869df3f5
