@@ -1,15 +1,16 @@
 import logging
 import pathlib
-import time
+import re
 from collections import defaultdict
 from collections.abc import Collection
 from copy import deepcopy
-from typing import Annotated
+from typing import Annotated, Any
 
 import cyclopts
 import mergedeep
 from cyclopts import App
 from lfp_logging import logs
+from packaging.version import Version
 
 from lfp_build import _config, pyproject, util, workspace
 from lfp_build.pyproject import PyProject, PyProjectTree
@@ -22,6 +23,7 @@ and dependencies across the root project and its member projects.
 """
 
 LOG = logs.logger(__name__)
+
 app = App()
 
 
@@ -131,7 +133,7 @@ def sync_version(projs: Collection[PyProject], version: str | None = None) -> No
             )
 
 
-def _version(version: str | None = None) -> str:
+def _version(current_version: str | None = None) -> str:
     """
     Generate a version using `git describe --tags --long`.
 
@@ -142,7 +144,9 @@ def _version(version: str | None = None) -> str:
     Example git output:
         v1.2.3-5-gabc123
     """
-
+    version: Version | None = _version_parse(current_version)
+    git_version: Version | None = None
+    count = 0
     try:
         describe = util.process_run(
             "git",
@@ -153,22 +157,37 @@ def _version(version: str | None = None) -> str:
             check=False,
             stderr_log_level=None,
         ).strip()
-    except OSError:
-        describe = None
-    tag = None
-    count = None
-    if describe:
+        if describe:
+            git_version = _version_parse(describe)
+            _, describe_count, _ = describe.rsplit("-", 2)
+            if describe_count:
+                count = int(describe_count)
+    except Exception:
+        pass
+    max_version = max((v for v in (version, git_version) if v is not None), default=None)
+    if max_version is None:
+        max_version = Version("0.0.1")
+    result_version = str(max_version)
+    if count > 0:
+        result_version += f".dev{count}"
+    return result_version
+
+
+def _version_parse(version: Any) -> Version | None:
+    if version:
+        version_parts = []
+        for part in version.split("."):
+            if match := re.search(r"\d+", part):
+                version_parts.append(match.group(0))
+            if len(version_parts) == 3:
+                break
+        version = ".".join(version_parts)
+    if version:
         try:
-            tag, count, _ = describe.rsplit("-", 2)
-            tag = tag.lstrip("v")
-            count = int(count) if count else 0
+            return Version(version)
         except Exception:
-            pass
-    result_version = version or tag or "0.0.1"
-    if count == 0:
-        return result_version
-    version_append = f"dev{count}" if count else f"ts{int(time.time())}"
-    return f"{result_version}.{version_append}"
+            raise
+    return None
 
 
 def sync_build_system(pyproject_tree: PyProjectTree) -> None:
