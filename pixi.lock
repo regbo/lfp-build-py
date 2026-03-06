@@ -686,7 +686,7 @@ packages:
 - pypi: ./
   name: lfp-build
   version: 0.0.15
-  sha256: f32af473ee5763a574ae8d5063992d7f2da7c3d003aa562819a4b0615ac4e09f
+  sha256: b849f3fc945864b0c567e71efe0a2d544901e03a173df7f9fd7cab9765bb394f
   requires_dist:
   - uv>=0.9.9
   - cyclopts
