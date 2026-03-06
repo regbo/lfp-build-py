@@ -6,16 +6,16 @@ synchronization, and build orchestration.
 
 ## Features
 
-- **Zero Dependencies**: Built entirely on the Python standard library.
-- **Smart Synchronization**: Keep build configs, dependencies, and tool settings consistent across all workspace projects.
+- **Workspace Synchronization**: Keep build configs, dependencies, and tool settings consistent across workspace projects.
 - **Project Scaffolding**: Bootstrap new projects with standard layouts and automatic workspace integration.
 - **Version Coordination**: Manage version strings across multiple projects with git integration.
-- **Multi-platform Support**: Supports macOS (ARM/x64), Linux (ARM/x64), and Windows (x64/ARM).
-- **Automated Publishing**: Integrated with GitHub Actions for automatic PyPI deployment on tagging.
+- **Wheel Metadata Normalization**: During `dist`, rewrite workspace-local `file://` dependency references in wheel metadata.
+- **Multi-platform Support**: Supports macOS (arm64/x64), Linux (arm64/x64), and Windows (x64).
+- **Git Hook Bootstrapping**: `create member` initializes git and configures `.githooks/pre-commit` when needed.
 
 ## Installation
 
-This package requires Python >= 3.11 and < 3.14.
+This package requires Python >= 3.11.
 
 You can install `lfp-build` directly from GitHub using `pip`:
 
@@ -433,24 +433,31 @@ Automated README documentation updater using command output sentinels.
 Core dependencies:
 
 - `uv`: Workspace and dependency management
-- `ruff`: Python formatting and linting
-- `taplo`: TOML formatting
 - `cyclopts`: CLI framework
-- `tomlkit`: TOML manipulation
-- `dacite`: Dataclass conversion
-- `sitecustomize-entrypoints`: Automatic config initialization via `lfp_build._config:load` (loads `.dev.env` by default, override with `PYTHON_DOTENV_FILE`)
+- `lfp-logging`: Logging facade
+- `python-dotenv`: Environment file loading
+- `sitecustomize-entrypoints`: Automatic config initialization via `lfp_build._config:load`
+- `tomlkit`: TOML parsing and round-trip writes
+- `mergedeep`: Member project config merging
+- `ruff`: Python formatting and linting
+
+Formatting notes:
+
+- TOML formatting prefers `taplo` when available and falls back to `tombi` via `uv tool run`.
+- `taplo`/`tombi` are invoked as tools and are not required as direct project dependencies.
 
 ### Environment Variables
 
 - `LOG_LEVEL`: Control logging verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- `LFP_BUILD_PYTHON_DOTENV_FILE`: Override dotenv file name loaded at startup (default `.dev.env`).
 - `LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE`: Controls how internal workspace
   dependencies are written during sync and metadata repair.
-  - `false` (default): keep internal dependencies as plain names (for example,
-    `common`) and maintain `tool.uv.sources.<dep>.workspace = true`.
-  - `true`: write internal dependencies as
+  - `true` (default): write internal dependencies as
     `name @ file://${PROJECT_ROOT}/...`. During `dist`, built wheel metadata is
     inspected and workspace-local `Requires-Dist: ... @ file://...` entries are
     rewritten to plain dependency names before copy.
+  - `false`: keep internal dependencies as plain names (for example, `common`)
+    and maintain `tool.uv.sources.<dep>.workspace = true`.
 
 ## Extending lfp-build
 

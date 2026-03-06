@@ -85,7 +85,7 @@ wheels = [
 
 [[package]]
 name = "lfp-build"
-version = "0.0.5"
+version = "0.0.8"
 source = { editable = "." }
 dependencies = [
     { name = "cyclopts" },
@@ -107,7 +107,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "cyclopts" },
-    { name = "lfp-logging", git = "https://github.com/regbo/lfp-logging-py.git" },
+    { name = "lfp-logging", specifier = ">=0.0.3" },
     { name = "mergedeep" },
     { name = "python-dotenv" },
     { name = "ruff" },
@@ -124,8 +124,12 @@ dev = [
 
 [[package]]
 name = "lfp-logging"
-version = "0.0.1"
-source = { git = "https://github.com/regbo/lfp-logging-py.git#e7c371dcd79e4af4990639fe5a6d1768a872b5fd" }
+version = "0.0.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/de/f7/0ecf81adabc648725f30d17660ecc80d3fb58fe2ef8c31985e2aefba67d9/lfp_logging-0.0.3.tar.gz", hash = "sha256:e27945647b550721cd81eb1c51cac3eb3e14817a02a13c4093da921eda43192f", size = 6682, upload-time = "2026-03-06T01:44:58.416Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a3/24/86593816b56e881b0939f6f38ec3cb0bdc8d7e426626e6b5a267b95ade4a/lfp_logging-0.0.3-py3-none-any.whl", hash = "sha256:9317d006c2d083c5bb7268fec2b7efdcd06750fe5f22ffc8a54e9a31879174c4", size = 8082, upload-time = "2026-03-06T01:44:57.471Z" },
+]
 
 [[package]]
 name = "markdown-it-py"
