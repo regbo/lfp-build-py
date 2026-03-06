@@ -58,4 +58,4 @@ default = { solve-group = "default", features = ["dev"] }
 dev = { features = ["dev"], solve-group = "default" }
 
 [tool.pixi.tasks]
-publish = { cmd = "git add . && (git diff --staged --quiet || git commit -m \"pre-release: staging changes\") && bumpversion {{ part }} --message \"{{ message }}\" && git push origin HEAD --tags", args = [{ arg = "part", default = "patch" }, { arg = "message", default = "incrementing version to {new_version}" }] }
+publish = { cmd = "bash scripts/release_bump.sh \"{{ part }}\" \"{{ message }}\"", args = [{ arg = "part", default = "patch" }, { arg = "message", default = "incrementing version to {new_version}" }] }
