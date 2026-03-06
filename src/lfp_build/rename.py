@@ -12,6 +12,14 @@ from lfp_logging import logs
 
 from lfp_build import workspace
 
+"""
+File and directory renaming utilities.
+
+Provides commands to perform mass rename operations on files and directories,
+including text replacement within files and directory path transformations.
+Supports dry-runs and automatic dash-to-underscore conversions.
+"""
+
 LOG = logs.logger(__name__)
 
 _SKIP_DIR_NAMES = (
@@ -64,6 +72,9 @@ def rename(
 
 # noinspection PyBroadException
 def _is_binary(path: Path, chunk_size: int = 8192) -> bool:
+    """
+    Determine if a file is binary by checking for null bytes in its first chunk.
+    """
     try:
         with path.open("rb") as f:
             return b"\x00" in f.read(chunk_size)
@@ -72,6 +83,9 @@ def _is_binary(path: Path, chunk_size: int = 8192) -> bool:
 
 
 def _is_in_workspace(path: Path, workspace_root: Path) -> bool:
+    """
+    Check if a given path is located within the workspace root directory.
+    """
     try:
         path.resolve().relative_to(workspace_root)
         return True
@@ -80,6 +94,11 @@ def _is_in_workspace(path: Path, workspace_root: Path) -> bool:
 
 
 def _should_prune(path: Path, workspace_root: Path) -> bool:
+    """
+    Determine if a directory should be skipped during file processing.
+
+    Prunes hidden directories, special environment folders, and the workspace itself.
+    """
     if _is_in_workspace(path, workspace_root):
         return True
 
@@ -94,6 +113,9 @@ def _should_prune(path: Path, workspace_root: Path) -> bool:
 
 
 def _variants(value: str, dash_to_underscore: bool) -> Iterable[str]:
+    """
+    Generate naming variants for a given string (e.g., swapping dashes for underscores).
+    """
     if dash_to_underscore:
         yield value
         yield value.replace("-", "_")
@@ -102,6 +124,9 @@ def _variants(value: str, dash_to_underscore: bool) -> Iterable[str]:
 
 
 def _walk_dirs(root: Path, workspace_root: Path) -> Iterable[Path]:
+    """
+    Yield all directories from root that are not pruned based on workspace rules.
+    """
     for dirpath, dirnames, _ in os.walk(root, topdown=True):
         current = Path(dirpath)
 

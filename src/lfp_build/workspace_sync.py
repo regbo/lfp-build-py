@@ -419,6 +419,17 @@ def _workspace_member_paths(
 def sync_pyproject_order(
     pyproject_tree: PyProjectTree,
 ) -> None:
+    """
+    Sort top-level keys in pyproject.toml files to ensure consistency.
+
+    The ordering follows a standard convention:
+    1. [build-system]
+    2. [project]
+    3. [project.*] tables
+    4. [dependency-groups]
+    5. All other tables (tool.*, etc.)
+    """
+
     def _order(proj: PyProject) -> PyProject:
         data = proj.data  # tomlkit document
 

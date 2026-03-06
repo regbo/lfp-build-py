@@ -194,6 +194,11 @@ def metadata(path: pathlib.Path = None) -> Metadata:
 
 
 def _rollback_files(originals: dict[pathlib.Path, str]) -> None:
+    """
+    Restore files to their original content from a backup mapping.
+
+    Used for cleanup when workspace metadata repairs fail.
+    """
     for path, text in originals.items():
         try:
             path.write_text(text)
