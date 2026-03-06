@@ -17,17 +17,17 @@ synchronization, and build orchestration.
 
 This package requires Python >= 3.11.
 
-You can install `lfp-build` directly from GitHub using `pip`:
+You can install `lfp-build` from PyPI using `pip`:
 
 ```bash
-pip install git+https://github.com/regbo/lfp-build-py.git
+pip install lfp-build
 ```
 
 Or add it to your `pyproject.toml` dependencies:
 
 ```toml
 dependencies = [
-    "lfp-build @ git+https://github.com/regbo/lfp-build-py.git"
+    "lfp-build"
 ]
 ```
 
@@ -38,7 +38,7 @@ lfp-build is designed to be used as a development dependency. Add it to your `py
 ```toml
 [dependency-groups]
 dev = [
-    "lfp-build @ git+https://github.com/regbo/lfp-build-py.git"
+    "lfp-build"
 ]
 ```
 

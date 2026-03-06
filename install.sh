@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-LFP_BUILD_REPO_URL_DEFAULT="https://github.com/regbo/lfp-build-py.git"
 # NOTE: The package metadata name is "lfp-build" (not "lfp-build-py").
-LFP_BUILD_SPEC_DEFAULT="lfp-build @ git+${LFP_BUILD_REPO_URL_DEFAULT}"
+LFP_BUILD_SPEC_DEFAULT="lfp-build"
 
 EMIT_ENV=0
 for arg in "$@"; do

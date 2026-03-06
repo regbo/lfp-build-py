@@ -1,9 +1,8 @@
 # Requires PowerShell
 $ErrorActionPreference = "Stop"
 
-$LfpBuildRepoUrlDefault = "https://github.com/regbo/lfp-build-py.git"
 # NOTE: The package metadata name is "lfp-build" (not "lfp-build-py").
-$LfpBuildSpecDefault = "lfp-build @ git+$LfpBuildRepoUrlDefault"
+$LfpBuildSpecDefault = "lfp-build"
 
 function Ensure-Home {
     if ($env:HOME -and (Test-Path $env:HOME)) {
