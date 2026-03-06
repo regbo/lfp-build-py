@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "lfp-build"
-version = "0.0.10"
+version = "0.0.5.dev1"
 description = "Local build utilities"
 requires-python = ">=3.11,<3.14"
 dependencies = [
@@ -58,13 +58,7 @@ replace = 'version = "{new_version}"'
 
 [tool.pixi.workspace]
 channels = ["conda-forge"]
-platforms = [
-    "osx-arm64",
-    "osx-64",
-    "linux-64",
-    "linux-aarch64",
-    "win-64"
-]
+platforms = ["osx-arm64", "osx-64", "linux-64", "linux-aarch64", "win-64"]
 
 [tool.pixi.pypi-dependencies]
 lfp-build = { path = ".", editable = true }
