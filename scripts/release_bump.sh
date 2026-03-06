@@ -27,5 +27,8 @@ case "${PART}" in
 esac
 
 MESSAGE="${MESSAGE_TEMPLATE//\{new_version\}/${NEW_VERSION}}"
-bumpversion --current-version "${BASE_VERSION}" --new-version "${NEW_VERSION}" "${PART}" --message "${MESSAGE}"
+bumpversion --current-version "${BASE_VERSION}" --new-version "${NEW_VERSION}" "${PART}" --no-commit --no-tag
+git add -A
+git commit -m "${MESSAGE}"
+git tag "v${NEW_VERSION}"
 git push origin HEAD --tags

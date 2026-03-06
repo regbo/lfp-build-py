@@ -85,7 +85,7 @@ wheels = [
 
 [[package]]
 name = "lfp-build"
-version = "0.0.2"
+version = "0.0.4"
 source = { editable = "." }
 dependencies = [
     { name = "cyclopts" },
