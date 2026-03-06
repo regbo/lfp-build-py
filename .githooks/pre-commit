@@ -1,14 +1,16 @@
 #!/bin/sh
 set -e
 
-# Run updates (updates pyproject files)
-uv run lfp-build sync
-uv run lfp-build readme
+# Run Ruff check and auto-fix fixable issues
+uv run ruff check . --fix
 
-# Stage any changes made by the sync so they land in THIS commit
+# Run Ruff format
+uv run ruff format .
+
+# Stage any changes made by ruff so they land in THIS commit
 git add -A
 
 # Optional: tell the user what was staged
 if ! git diff --quiet --cached; then
-  echo "pre-commit: staged version updates."
+  echo "pre-commit: applied ruff fixes and formatting."
 fi

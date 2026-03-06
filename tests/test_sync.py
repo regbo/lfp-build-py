@@ -134,5 +134,3 @@ version = "0.0.0"
     pkg_a_text = (pkg_a_dir / _config.PYPROJECT_FILE_NAME).read_text()
     assert "pkg-b @ file://${PROJECT_ROOT}/../pkg_b" in pkg_a_text
     assert "workspace = true" in pkg_a_text
-
-

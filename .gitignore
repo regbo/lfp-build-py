@@ -220,4 +220,6 @@ prpr/
 *_pb2.py
 
 **/.dev
-**/.dev.*
+**/.dev.*# pixi environments
+.pixi/*
+!.pixi/config.toml

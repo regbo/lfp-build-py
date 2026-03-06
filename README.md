@@ -4,35 +4,32 @@ A comprehensive workspace management tool designed to handle complicated and com
 multi-project Python environments. Built to be adopted by any project requiring automated code generation, workspace
 synchronization, and build orchestration.
 
-## Why Use lfp-build?
+## Features
 
-Managing multi-project Python workspaces becomes increasingly complex as projects grow. Common challenges include:
-
-- **Configuration Drift**: Build configs, dependencies, and tool settings diverge across related projects
-- **Workspace Coordination**: Multiple projects with interdependencies require careful version and dependency management
-- **Build Artifact Management**: Generated files, caches, and artifacts accumulate without systematic cleanup
-
-`lfp-build` solves these problems by providing a battle-tested CLI that orchestrates:
-
-- **Smart Synchronization**: Keep build configs, dependencies, and tool settings consistent across all workspace
-  projects
-- **Project Scaffolding**: Bootstrap new projects with standard layouts and automatic workspace integration
-- **Version Coordination**: Manage version strings across multiple projects with git integration
-
-## Use Cases
-
-### Multi-Project Workspaces
-
-Manage Python monorepos or multi-project repositories where several related packages share common build configurations,
-dependencies, and tooling. Synchronize settings from a root project to all members automatically.
-
-### Continuous Integration
-
-Integrate workspace management into CI/CD pipelines with deterministic outputs and change detection.
+- **Zero Dependencies**: Built entirely on the Python standard library.
+- **Smart Synchronization**: Keep build configs, dependencies, and tool settings consistent across all workspace projects.
+- **Project Scaffolding**: Bootstrap new projects with standard layouts and automatic workspace integration.
+- **Version Coordination**: Manage version strings across multiple projects with git integration.
+- **Multi-platform Support**: Supports macOS (ARM/x64), Linux (ARM/x64), and Windows (x64/ARM).
+- **Automated Publishing**: Integrated with GitHub Actions for automatic PyPI deployment on tagging.
 
 ## Installation
 
 This package requires Python >= 3.11 and < 3.14.
+
+You can install `lfp-build` directly from GitHub using `pip`:
+
+```bash
+pip install git+https://github.com/regbo/lfp-build-py.git
+```
+
+Or add it to your `pyproject.toml` dependencies:
+
+```toml
+dependencies = [
+    "lfp-build @ git+https://github.com/regbo/lfp-build-py.git"
+]
+```
 
 ### For Use in Your Project (Recommended)
 

@@ -284,8 +284,7 @@ platforms = [
   "linux-aarch64",
   "osx-64",
   "osx-arm64",
-  "win-64",
-  "win-arm64"
+  "win-64"
 ]
 
 [tool.pixi.environments]
