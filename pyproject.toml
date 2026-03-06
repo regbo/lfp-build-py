@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "lfp-build"
-version = "0.0.13"
+version = "0.0.14"
 description = "Local build utilities"
 requires-python = ">=3.11,<3.14"
 dependencies = [
@@ -47,7 +47,7 @@ ignore = ["ANN401"]
 "tests/**/*.py" = ["ANN001", "ANN002", "ANN003", "ANN202", "ANN201"]
 
 [tool.bumpversion]
-current_version = "0.0.13"
+current_version = "0.0.14"
 commit = true
 tag = true
 
