@@ -1,4 +1,5 @@
 import logging
+import os
 import pathlib
 import re
 from collections import defaultdict
@@ -29,17 +30,17 @@ app = App()
 
 @app.default
 def sync(
-    *,
-    name: list[str] | None = None,
-    version: bool = True,
-    build_system: bool = True,
-    member_project_tool: bool = True,
-    member_project_dependencies: bool = True,
-    member_paths: bool = True,
-    reorder_pyproject: bool = True,
-    format_pyproject: bool = True,
-    format_python: bool = True,
-    new_pyprojects: Annotated[dict[str, PyProject] | None, cyclopts.Parameter(show=False)] = None,
+        *,
+        name: list[str] | None = None,
+        version: bool = True,
+        build_system: bool = True,
+        member_project_tool: bool = True,
+        member_project_dependencies: bool = True,
+        member_paths: bool = True,
+        reorder_pyproject: bool = True,
+        format_pyproject: bool = True,
+        format_python: bool = True,
+        new_pyprojects: Annotated[dict[str, PyProject] | None, cyclopts.Parameter(show=False)] = None,
 ) -> None:
     """
     Synchronize project configurations across the workspace.
@@ -147,19 +148,22 @@ def _version(current_version: str | None = None) -> str:
     version: Version | None = _version_parse(current_version)
     git_version: Version | None = None
     count = 0
+    rev = None
     try:
-        describe = util.process_run(
+        proc=util.process_run(
             "git",
             "describe",
             "--tags",
             "--long",
             "--abbrev=7",
             check=False,
-            stderr_log_level=None,
-        ).strip()
+            stderr_log_level=logging.INFO,
+        )
+        describe_out =
+        describe = describe_out.strip()
         if describe:
             git_version = _version_parse(describe)
-            _, describe_count, _ = describe.rsplit("-", 2)
+            _, describe_count, rev = describe.rsplit("-", 2)
             if describe_count:
                 count = int(describe_count)
     except Exception:
@@ -214,7 +218,7 @@ def sync_member_project_tool(pyproject_tree: PyProjectTree) -> None:
 
 
 def sync_member_project_dependencies(
-    unfiltered_pyproject_tree: PyProjectTree, pyproject_tree: PyProjectTree
+        unfiltered_pyproject_tree: PyProjectTree, pyproject_tree: PyProjectTree
 ) -> None:
     """
     Synchronize internal workspace dependencies and uv source entries.
@@ -267,7 +271,7 @@ def _sync_member_project_dependencies(pyproject_tree: PyProjectTree, proj: PyPro
 
 
 def sync_member_paths(
-    unfiltered_pyproject_tree: PyProjectTree,
+        unfiltered_pyproject_tree: PyProjectTree,
 ) -> None:
     if unfiltered_pyproject_tree.filtered:
         raise ValueError("Unfiltered workspace tree required for member path sync")
@@ -297,7 +301,7 @@ def sync_member_paths(
 
 
 def _workspace_member_paths(
-    root: pathlib.Path, paths: list[pathlib.Path], excludes: list[str] | None
+        root: pathlib.Path, paths: list[pathlib.Path], excludes: list[str] | None
 ) -> list[str]:
     """
     Consolidate project paths into parent wildcards (e.g., 'packages/*') strictly.
@@ -380,7 +384,7 @@ def _workspace_member_paths(
 
 
 def sync_pyproject_order(
-    pyproject_tree: PyProjectTree,
+        pyproject_tree: PyProjectTree,
 ) -> None:
     def _order(proj: PyProject) -> PyProject:
         data = proj.data  # tomlkit document
@@ -408,11 +412,11 @@ def sync_pyproject_order(
         data.clear()
 
         for group in (
-            build_system,
-            project,
-            project_children,
-            dependency_groups,
-            rest,
+                build_system,
+                project,
+                project_children,
+                dependency_groups,
+                rest,
         ):
             for k, v in group:
                 data.add(k, v)
@@ -445,4 +449,5 @@ def _ruff_format(path: pathlib.Path) -> None:
 
 
 if "__main__" == __name__:
+    os.chdir("/Users/reggie.pierce/Projects/reggie-bricks-py")
     sync()
