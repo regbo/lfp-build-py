@@ -1,5 +1,6 @@
 import logging
 import pathlib
+import time
 from collections import defaultdict
 from collections.abc import Collection
 from copy import deepcopy
@@ -114,10 +115,10 @@ def sync_version(projs: Collection[PyProject], version: str | None = None) -> No
         project_data = proj.data.get("project", None)
         if project_data is not None:
             key = "version"
-
-            if version is None:
-                version = _version()
             current_version = project_data.get(key, None)
+            if not version:
+                version = _version(current_version)
+
             if current_version == version:
                 continue
             project_data[key] = version
@@ -130,46 +131,44 @@ def sync_version(projs: Collection[PyProject], version: str | None = None) -> No
             )
 
 
-def _version() -> str:
+def _version(version: str | None = None) -> str:
     """
-    Generate a version string based on git HEAD and working directory state.
+    Generate a version using `git describe --tags --long`.
 
-    Uses '0.0.1+g{rev}' format where {rev} is the short hash of HEAD when the
-    working tree is modified, or HEAD~1 when the tree is clean.
+    Format:
+        {tag}            when HEAD is exactly on the tag
+        {tag}.dev{n}     when n commits past the tag
 
-    If git is unavailable or the current directory is not a git repository,
-    falls back to the base version string without a revision suffix.
+    Example git output:
+        v1.2.3-5-gabc123
     """
-    modified = False
-    try:
-        for _ in util.process_start(
-            "git",
-            "status",
-            "--porcelain",
-            check=False,
-            stderr_log_level=None,
-        ):
-            modified = True
-            break
-    except OSError:
-        # git not installed or not runnable
-        modified = False
-
-    head_arg = "HEAD" if modified else "HEAD~1"
 
     try:
-        rev = util.process_run(
+        describe = util.process_run(
             "git",
-            "rev-parse",
-            "--short",
-            head_arg,
+            "describe",
+            "--tags",
+            "--long",
+            "--abbrev=7",
             check=False,
             stderr_log_level=None,
-        )
+        ).strip()
     except OSError:
-        rev = ""
-    version = "0.0.1"
-    return f"{version}+g{rev}" if rev else version
+        describe = None
+    tag = None
+    count = None
+    if describe:
+        try:
+            tag, count, _ = describe.rsplit("-", 2)
+            tag = tag.lstrip("v")
+            count = int(count) if count else 0
+        except Exception:
+            pass
+    result_version = version or tag or "0.0.1"
+    if count == 0:
+        return result_version
+    version_append = f"dev{count}" if count else f"ts{int(time.time())}"
+    return f"{result_version}.{version_append}"
 
 
 def sync_build_system(pyproject_tree: PyProjectTree) -> None:
@@ -427,4 +426,4 @@ def _ruff_format(path: pathlib.Path) -> None:
 
 
 if "__main__" == __name__:
-    pass
+    sync()

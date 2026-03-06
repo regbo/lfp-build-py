@@ -6,15 +6,14 @@ build-backend = "uv_build"
 name = "lfp-build"
 version = "0.0.10"
 description = "Local build utilities"
-readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 dependencies = [
     # Build and workspace command orchestration backend.
     "uv>=0.9.9",
     # CLI framework used for command parsing and help output.
     "cyclopts",
     # Logging facade used across all modules.
-    "lfp-logging>=0.0.3",
+    "lfp-logging",
     # Load .env files for runtime config defaults.
     "python-dotenv",
     # Auto-load lfp_build._config at interpreter startup.
@@ -47,15 +46,25 @@ ignore = ["ANN401"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["ANN001", "ANN002", "ANN003", "ANN202", "ANN201"]
 
+[tool.bumpversion]
+current_version = "0.0.5"
+commit = true
+tag = true
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+
 [tool.pixi.workspace]
 channels = ["conda-forge"]
-platforms = ["osx-arm64", "osx-64", "linux-64", "linux-aarch64", "win-64"]
-
-[tool.pixi.target.unix.dependencies]
-bash = "*"
-
-[tool.pixi.target.win-64.dependencies]
-m2-bash = "*"
+platforms = [
+    "osx-arm64",
+    "osx-64",
+    "linux-64",
+    "linux-aarch64",
+    "win-64"
+]
 
 [tool.pixi.pypi-dependencies]
 lfp-build = { path = ".", editable = true }
@@ -65,4 +74,10 @@ default = { solve-group = "default", features = ["dev"] }
 dev = { features = ["dev"], solve-group = "default" }
 
 [tool.pixi.tasks]
-publish = { cmd = "bash scripts/release_bump.sh \"{{ part }}\" \"{{ message }}\"", args = [{ arg = "part", default = "patch" }, { arg = "message", default = "incrementing version to new release" }] }
+ruff-fix = "ruff check . --fix --unsafe-fixes && ruff format ."
+publish = { cmd = "git add . && (git diff --staged --quiet || git commit -m \"pre-release: staging changes\") && bumpversion {{ part }} --message \"{{ message }}\" && git push origin HEAD --tags", args = [
+    { arg = "part", default = "patch" },
+    { arg = "message", default = "incrementing version to {new_version}" },
+], depends-on = [
+    "ruff-fix",
+] }

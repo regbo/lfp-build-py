@@ -23,7 +23,11 @@ jobs:
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
       - name: Build package
-        run: uv build
+        run: |
+          # Dynamically add project URLs to pyproject.toml for PyPI metadata
+          # This uses sed to insert the [project.urls] table before the [build-system] table
+          sed -i '/\[build-system\]/i [project.urls]\nRepository = "https://github.com/${{ github.repository }}"\n' pyproject.toml
+          uv build
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
