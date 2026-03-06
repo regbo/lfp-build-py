@@ -143,10 +143,12 @@ def _version(current_version: str | None = None) -> str:
     git_version, git_commit_count = _version_git()
     max_version = max((v for v in (version, git_version) if v is not None), default="0.0.1")
     if git_commit_count is not None:
-        rev = f"-dev{git_commit_count}" if git_commit_count else ""
+        rev = f"dev{git_commit_count}" if git_commit_count else ""
     else:
         git_rev = _version_git_rev()
-        rev = f"-rev{git_rev}" if git_rev else f"-ts{int(time.time())}"
+        rev = f"rev{git_rev}" if git_rev else f"ts{int(time.time())}"
+    if rev:
+        rev = "+" + rev
     return f"{max_version}{rev}"
 
 
