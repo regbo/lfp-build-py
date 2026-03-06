@@ -27,6 +27,9 @@ case "${PART}" in
 esac
 
 MESSAGE="${MESSAGE_TEMPLATE//\{new_version\}/${NEW_VERSION}}"
+# Guard against templating artifacts from CI/task layers.
+MESSAGE="${MESSAGE//\{/}"
+MESSAGE="${MESSAGE//\}/}"
 bumpversion --current-version "${BASE_VERSION}" --new-version "${NEW_VERSION}" "${PART}" --no-commit --no-tag
 git add -A
 git commit -m "${MESSAGE}"
