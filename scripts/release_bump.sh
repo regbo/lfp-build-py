@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Prepare a clean release bump by normalizing hash-suffixed versions.
 PART="${1:-patch}"
-MESSAGE="${2:-incrementing version to {new_version}}"
+MESSAGE_TEMPLATE="${2:-incrementing version to {new_version}}"
 
 git add .
 if ! git diff --staged --quiet; then
@@ -26,5 +26,6 @@ case "${PART}" in
   *) echo "Unsupported part: ${PART}" >&2; exit 1 ;;
 esac
 
+MESSAGE="${MESSAGE_TEMPLATE//\{new_version\}/${NEW_VERSION}}"
 bumpversion --current-version "${BASE_VERSION}" --new-version "${NEW_VERSION}" "${PART}" --message "${MESSAGE}"
 git push origin HEAD --tags
