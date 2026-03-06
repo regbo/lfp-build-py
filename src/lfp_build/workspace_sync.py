@@ -142,13 +142,16 @@ def _version(current_version: str | None = None) -> str:
     version: Version | None = _version_parse(current_version)
     git_version, git_commit_count = _version_git()
     max_version = max((v for v in (version, git_version) if v is not None), default="0.0.1")
-    if git_commit_count is not None:
-        rev = f"dev{git_commit_count}" if git_commit_count else ""
+    if not git_commit_count:
+        git_rev, git_modified = _version_git_rev()
+        if not git_modified:
+            rev = ""
+        else:
+            rev = f"rev{git_rev}" if git_rev else f"ts{int(time.time())}"
     else:
-        git_rev = _version_git_rev()
-        rev = f"rev{git_rev}" if git_rev else f"ts{int(time.time())}"
+        rev = f"dev{git_commit_count}"
     if rev:
-        rev = "+" + rev
+        rev = f"+{rev}"
     return f"{max_version}{rev}"
 
 
@@ -175,7 +178,7 @@ def _version_git() -> tuple[Version | None, int | None]:
     return None, None
 
 
-def _version_git_rev() -> str | None:
+def _version_git_rev() -> tuple[str | None, bool]:
     modified = False
     try:
         for _ in util.process_start(
@@ -189,7 +192,7 @@ def _version_git_rev() -> str | None:
             break
     except OSError:
         # git not installed or not runnable
-        return None
+        return None, False
 
     head_arg = "HEAD" if modified else "HEAD~1"
 
@@ -203,8 +206,8 @@ def _version_git_rev() -> str | None:
             stderr_log_level=None,
         )
     except OSError:
-        return None
-    return rev.strip() or None
+        return None, False
+    return rev.strip() or None, modified
 
 
 def _version_parse(version: Any) -> Version | None:
