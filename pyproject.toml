@@ -33,7 +33,7 @@ lfp-build = "lfp_build.cli:main"
 lfp-build-config = "lfp_build._config:load"
 
 [dependency-groups]
-dev = ["pytest", "bump-my-version"]
+dev = ["pytest", "bumpversion"]
 
 [tool.ruff]
 line-length = 100
@@ -69,9 +69,5 @@ dev = { features = ["dev"], solve-group = "default" }
 
 [tool.pixi.tasks]
 ruff-fix = "ruff check . --fix --unsafe-fixes && ruff format ."
-publish = { cmd = "git add . && (git diff --staged --quiet || git commit -m \"pre-release: staging changes\") && bump-my-version bump {{ part }} --message \"{{ message }}\" && git push origin HEAD --tags", args = [
-    { arg = "part", default = "patch" },
-    { arg = "message", default = "incrementing version to {new_version}" },
-], depends-on = [
-    "ruff-fix",
-] }
+publish = { cmd = "git add . && (git diff --staged --quiet || git commit -m \"pre-release: staging changes\") && bumpversion {{ part }} --message \"{{ message }}\" && git push origin HEAD --tags", args = [{ arg = "part", default = "patch" }, { arg = "message", default = "incrementing version to {new_version}" }], depends-on = ["ruff-fix"] }
+
