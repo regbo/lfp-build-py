@@ -2,6 +2,7 @@ import logging
 import os
 import pathlib
 import re
+import time
 from collections import defaultdict
 from collections.abc import Collection
 from copy import deepcopy
@@ -30,17 +31,20 @@ app = App()
 
 @app.default
 def sync(
-        *,
-        name: list[str] | None = None,
-        version: bool = True,
-        build_system: bool = True,
-        member_project_tool: bool = True,
-        member_project_dependencies: bool = True,
-        member_paths: bool = True,
-        reorder_pyproject: bool = True,
-        format_pyproject: bool = True,
-        format_python: bool = True,
-        new_pyprojects: Annotated[dict[str, PyProject] | None, cyclopts.Parameter(show=False)] = None,
+    *,
+    name: list[str] | None = None,
+    version: bool = True,
+    build_system: bool = True,
+    member_project_tool: bool = True,
+    member_project_dependencies: bool = True,
+    member_paths: bool = True,
+    reorder_pyproject: bool = True,
+    format_pyproject: bool = True,
+    format_python: bool = True,
+    new_pyprojects: Annotated[
+        dict[str, PyProject] | None,
+        cyclopts.Parameter(show=False),
+    ] = None,
 ) -> None:
     """
     Synchronize project configurations across the workspace.
@@ -135,46 +139,70 @@ def sync_version(projs: Collection[PyProject], version: str | None = None) -> No
 
 
 def _version(current_version: str | None = None) -> str:
-    """
-    Generate a version using `git describe --tags --long`.
-
-    Format:
-        {tag}            when HEAD is exactly on the tag
-        {tag}.dev{n}     when n commits past the tag
-
-    Example git output:
-        v1.2.3-5-gabc123
-    """
     version: Version | None = _version_parse(current_version)
-    git_version: Version | None = None
-    count = 0
-    rev = None
+    git_version, git_commit_count = _version_git()
+    max_version = max((v for v in (version, git_version) if v is not None), default="0.0.1")
+    if git_commit_count is not None:
+        rev = f"dev{git_commit_count}" if git_commit_count else ""
+    else:
+        git_rev = _version_git_rev()
+        rev = f"rev{git_rev}" if git_rev else f"ts{int(time.time())}"
+    return f"{max_version}.{rev}"
+
+
+def _version_git() -> tuple[Version | None, int | None]:
     try:
-        proc=util.process_run(
+        describe = util.process_run(
             "git",
             "describe",
             "--tags",
             "--long",
             "--abbrev=7",
             check=False,
-            stderr_log_level=logging.INFO,
-        )
-        describe_out =
-        describe = describe_out.strip()
+            stderr_log_level=None,
+        ).strip()
         if describe:
-            git_version = _version_parse(describe)
-            _, describe_count, rev = describe.rsplit("-", 2)
-            if describe_count:
-                count = int(describe_count)
+            if version := _version_parse(describe):
+                _, count, _ = describe.rsplit("-", 2)
+                if count:
+                    return version, int(count)
+                else:
+                    return version, None
     except Exception:
         pass
-    max_version = max((v for v in (version, git_version) if v is not None), default=None)
-    if max_version is None:
-        max_version = Version("0.0.1")
-    result_version = str(max_version)
-    if count > 0:
-        result_version += f".dev{count}"
-    return result_version
+    return None, None
+
+
+def _version_git_rev() -> str | None:
+    modified = False
+    try:
+        for _ in util.process_start(
+            "git",
+            "status",
+            "--porcelain",
+            check=False,
+            stderr_log_level=None,
+        ):
+            modified = True
+            break
+    except OSError:
+        # git not installed or not runnable
+        return None
+
+    head_arg = "HEAD" if modified else "HEAD~1"
+
+    try:
+        rev = util.process_run(
+            "git",
+            "rev-parse",
+            "--short",
+            head_arg,
+            check=False,
+            stderr_log_level=None,
+        )
+    except OSError:
+        return None
+    return rev.strip() or None
 
 
 def _version_parse(version: Any) -> Version | None:
@@ -218,7 +246,7 @@ def sync_member_project_tool(pyproject_tree: PyProjectTree) -> None:
 
 
 def sync_member_project_dependencies(
-        unfiltered_pyproject_tree: PyProjectTree, pyproject_tree: PyProjectTree
+    unfiltered_pyproject_tree: PyProjectTree, pyproject_tree: PyProjectTree
 ) -> None:
     """
     Synchronize internal workspace dependencies and uv source entries.
@@ -271,7 +299,7 @@ def _sync_member_project_dependencies(pyproject_tree: PyProjectTree, proj: PyPro
 
 
 def sync_member_paths(
-        unfiltered_pyproject_tree: PyProjectTree,
+    unfiltered_pyproject_tree: PyProjectTree,
 ) -> None:
     if unfiltered_pyproject_tree.filtered:
         raise ValueError("Unfiltered workspace tree required for member path sync")
@@ -301,7 +329,7 @@ def sync_member_paths(
 
 
 def _workspace_member_paths(
-        root: pathlib.Path, paths: list[pathlib.Path], excludes: list[str] | None
+    root: pathlib.Path, paths: list[pathlib.Path], excludes: list[str] | None
 ) -> list[str]:
     """
     Consolidate project paths into parent wildcards (e.g., 'packages/*') strictly.
@@ -384,7 +412,7 @@ def _workspace_member_paths(
 
 
 def sync_pyproject_order(
-        pyproject_tree: PyProjectTree,
+    pyproject_tree: PyProjectTree,
 ) -> None:
     def _order(proj: PyProject) -> PyProject:
         data = proj.data  # tomlkit document
@@ -412,11 +440,11 @@ def sync_pyproject_order(
         data.clear()
 
         for group in (
-                build_system,
-                project,
-                project_children,
-                dependency_groups,
-                rest,
+            build_system,
+            project,
+            project_children,
+            dependency_groups,
+            rest,
         ):
             for k, v in group:
                 data.add(k, v)
