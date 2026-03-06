@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "lfp-build"
-version = "0.0.1+g4059382"
+version = "0.0.1"
 description = "Local build utilities"
 requires-python = ">=3.11"
 dependencies = [
