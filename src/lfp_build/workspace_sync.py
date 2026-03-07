@@ -1,7 +1,6 @@
 import logging
 import os
 import pathlib
-import re
 import time
 from collections import defaultdict
 from collections.abc import Collection
@@ -12,7 +11,6 @@ import cyclopts
 import mergedeep
 from cyclopts import App
 from lfp_logging import logs
-from packaging.version import Version
 
 from lfp_build import _config, pyproject, util, workspace
 from lfp_build.pyproject import PyProject, PyProjectTree
@@ -139,9 +137,9 @@ def sync_version(projs: Collection[PyProject], version: str | None = None) -> No
 
 
 def _version(current_version: str | None = None) -> str:
-    version: Version | None = _version_parse(current_version)
+    version = _version_parse(current_version)
     git_version, git_commit_count = _version_git()
-    max_version = max((v for v in (version, git_version) if v is not None), default="0.0.1")
+    max_version = max((v for v in (version, git_version) if v is not None), default=(0, 0, 1))
     if not git_commit_count:
         git_rev, git_modified = _version_git_rev()
         if not git_modified:
@@ -152,10 +150,10 @@ def _version(current_version: str | None = None) -> str:
         rev = f"dev{git_commit_count}"
     if rev:
         rev = f"+{rev}"
-    return f"{max_version}{rev}"
+    return f"{_version_format(max_version)}{rev}"
 
 
-def _version_git() -> tuple[Version | None, int | None]:
+def _version_git() -> tuple[tuple[int, int, int] | None, int | None]:
     try:
         describe = util.process_run(
             "git",
@@ -210,21 +208,29 @@ def _version_git_rev() -> tuple[str | None, bool]:
     return rev.strip() or None, modified
 
 
-def _version_parse(version: Any) -> Version | None:
+def _version_parse(version: Any) -> tuple[int, int, int] | None:
     if version:
-        version_parts = []
-        for part in version.split("."):
-            if match := re.search(r"\d+", part):
-                version_parts.append(match.group(0))
-            if len(version_parts) == 3:
-                break
-        version = ".".join(version_parts)
-    if version:
-        try:
-            return Version(version)
-        except Exception:
-            raise
+        version_parts = str(version).strip().split(".", 4)[:3]
+        version_digits = ("", "", "")
+        for idx, part in enumerate(version_parts):
+            for char in part:
+                if char.isdigit():
+                    version_digits[idx] += char
+                elif version_digits[idx]:
+                    break
+        if version_digits[0]:
+            for idx in range(2):
+                offset_idx = idx + 1
+                if not version_digits[offset_idx]:
+                    version_digits[offset_idx] = 0
+                version_digits[offset_idx] = version_digits[idx]
+            return tuple(int(digit) for digit in version_digits)
     return None
+
+
+def _version_format(version: tuple[int, int, int]) -> str:
+    major, minor, patch = version
+    return f"{major}.{minor}.{patch}"
 
 
 def sync_build_system(pyproject_tree: PyProjectTree) -> None:
