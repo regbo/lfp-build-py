@@ -21,7 +21,6 @@ setting up the directory structure, package layout, and dependencies.
 
 LOG = logs.logger(__name__)
 _PATH = pathlib.Path("packages")
-_LFP_BUILD_REPO_URL = "https://github.com/regbo/lfp-build-py.git"
 _GIT_HOOKS_DIR = pathlib.Path(".githooks")
 _PRE_COMMIT_HOOK = _GIT_HOOKS_DIR / "pre-commit"
 _PRE_COMMIT_SCRIPT = """#!/bin/sh
@@ -259,7 +258,7 @@ def project(
             raise ValueError(f"Project already exists: {project_dir}")
     project_dir.mkdir(parents=True, exist_ok=False)
 
-    lfp_build_dep = f"lfp-build @ git+{_LFP_BUILD_REPO_URL}"
+    lfp_build_dep = "lfp-build"
 
     root_pyproject = project_dir / _config.PYPROJECT_FILE_NAME
     root_pyproject.write_text(
