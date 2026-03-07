@@ -6,7 +6,7 @@ from lfp_build import _config, pyproject, workspace_create, workspace_sync
 def test_workspace_create_project(temp_workspace) -> None:
     """Test creating a new member project."""
     project_name = "new-pkg"
-    workspace_create.create(project_name, path=pathlib.Path("packages"))
+    workspace_create.member(project_name, path=pathlib.Path("packages"))
 
     expected_path = temp_workspace / "packages" / project_name
     assert expected_path.exists()

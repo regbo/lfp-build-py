@@ -42,7 +42,7 @@ fi
 app = App()
 
 
-@app.default
+@app.command
 def member(
     name: str,
     *,
@@ -313,12 +313,6 @@ uvm = "uv run -m"
         os.chdir(old_cwd)
 
     LOG.info("Workspace project created: %s", project_dir)
-
-
-app.command(member, name="member")
-
-# Backwards compatible alias
-create = member
 
 
 if "__main__" == __name__:
