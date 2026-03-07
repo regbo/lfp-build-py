@@ -6,7 +6,6 @@ synchronization, and build orchestration.
 
 ## Features
 
-- **Zero Dependencies**: Built entirely on the Python standard library.
 - **Smart Synchronization**: Keep build configs, dependencies, and tool settings consistent across all workspace projects.
 - **Project Scaffolding**: Bootstrap new projects with standard layouts and automatic workspace integration.
 - **Version Coordination**: Manage version strings across multiple projects with git integration.
@@ -55,34 +54,15 @@ uv run lfp-build create new-service
 Using `uv run` ensures lfp-build and its dependencies are isolated from your project's runtime dependencies while
 remaining available for all developers and CI/CD environments.
 
-### Install Scripts (Nothing Preinstalled)
+### CLI-first setup
 
-If you want to run `lfp-build` from a fresh machine with nothing installed, use the install scripts in this repo.
-They will:
+Use the package directly via `pip` or as a dev tool through `uv run`. This project does not require a curl-based bootstrap installer.
 
-- Ensure a usable `HOME` exists (fallback to `/home/app`, then `/home`, then `/tmp/home`)
-- Install `pixi` into `$HOME/.local/bin` (using `PIXI_HOME` and `PIXI_BIN_DIR`)
-- Install `uv` if missing
-- Install `git` if missing (via `pixi global install --channel conda-forge git`)
-- Install `lfp-build` as a uv tool
-- Run the pixi shell activation hook (best effort)
-
-Linux/macOS:
+Examples:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/regbo/lfp-build-py/main/install.sh | bash
-```
-
-If you want a single command that both installs and updates your current shell's environment:
-
-```bash
-eval "$(curl -fsSL https://raw.githubusercontent.com/regbo/lfp-build-py/main/install.sh | bash -s -- --emit-env)"
-```
-
-Windows PowerShell:
-
-```powershell
-irm -useb https://raw.githubusercontent.com/regbo/lfp-build-py/main/install.ps1 | iex
+pip install git+https://github.com/regbo/lfp-build-py.git
+uv run lfp-build --help
 ```
 
 ### For lfp-build Development

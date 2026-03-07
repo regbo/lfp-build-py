@@ -25,13 +25,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install uv
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
-        if: runner.os != 'Windows'
-
-      - name: Install uv (Windows)
-        run: powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-        if: runner.os == 'Windows'
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
 
       - name: Run tests
         run: uv run pytest
