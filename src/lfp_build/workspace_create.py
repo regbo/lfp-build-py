@@ -51,7 +51,7 @@ def member(
     ] = _PATH,
     project_dependency: Annotated[
         list[str] | None,
-        cyclopts.Parameter(alias="-pd", negative=""),
+        cyclopts.Parameter(alias="-c", negative=""),
     ] = None,
     dependency: Annotated[
         list[str] | None,
