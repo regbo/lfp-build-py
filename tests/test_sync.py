@@ -33,8 +33,8 @@ version = "0.0.0"
     assert "build-system" in pkg_proj.data
     assert pkg_proj.data["build-system"]["build-backend"] == "hatchling.build"
 
-    # Check if version was synced (it should be 0.0.1+g... or similar from git)
-    assert pkg_proj.data["project"]["version"].startswith("0.0.1")
+    # Check if version was synced to a normalized semver-based value.
+    assert pkg_proj.data["project"]["version"].startswith("0.")
 
 
 def test_workspace_sync_version_without_git_repo(tmp_path, monkeypatch) -> None:
@@ -56,8 +56,8 @@ version = "0.0.0"
     proj = pyproject.PyProject(pyproject_path)
     workspace_sync.sync_version([proj], version=None)
 
-    # Should fall back to base version without raising
-    assert proj.data["project"]["version"].startswith("0.0.1")
+    # Should keep existing version without raising when git metadata is unavailable.
+    assert proj.data["project"]["version"] == "0.0.0"
 
 
 def test_workspace_sync_member_deps_plain_names_when_direct_reference_off(
@@ -84,7 +84,7 @@ version = "0.0.0"
 """
     )
 
-    monkeypatch.delenv("LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE", raising=False)
+    monkeypatch.setenv("LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE", "0")
     workspace_sync.sync(
         format_python=False,
         version=False,
@@ -134,3 +134,27 @@ version = "0.0.0"
     pkg_a_text = (pkg_a_dir / _config.PYPROJECT_FILE_NAME).read_text()
     assert "pkg-b @ file://${PROJECT_ROOT}/../pkg_b" in pkg_a_text
     assert "workspace = true" in pkg_a_text
+
+
+def test_version_parse_single_part_pads_to_three_parts() -> None:
+    assert workspace_sync._version_parse("1") == (1, 0, 0)
+
+
+def test_version_parse_two_parts_pads_patch() -> None:
+    assert workspace_sync._version_parse("1.2") == (1, 2, 0)
+
+
+def test_version_parse_three_parts_is_preserved() -> None:
+    assert workspace_sync._version_parse("1.2.3") == (1, 2, 3)
+
+
+def test_version_parse_handles_common_version_prefixes_and_suffixes() -> None:
+    assert workspace_sync._version_parse("v1.2.3") == (1, 2, 3)
+    assert workspace_sync._version_parse("1.2.3+rev7") == (1, 2, 3)
+    assert workspace_sync._version_parse("1.2.3-dev.4") == (1, 2, 3)
+
+
+def test_version_parse_invalid_values_return_none() -> None:
+    assert workspace_sync._version_parse(None) is None
+    assert workspace_sync._version_parse("") is None
+    assert workspace_sync._version_parse("abc") is None

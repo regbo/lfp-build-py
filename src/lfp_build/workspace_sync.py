@@ -211,7 +211,7 @@ def _version_git_rev() -> tuple[str | None, bool]:
 def _version_parse(version: Any) -> tuple[int, int, int] | None:
     if version:
         version_parts = str(version).strip().split(".", 4)[:3]
-        version_digits = ("", "", "")
+        version_digits = ["", "", ""]
         for idx, part in enumerate(version_parts):
             for char in part:
                 if char.isdigit():
@@ -223,7 +223,6 @@ def _version_parse(version: Any) -> tuple[int, int, int] | None:
                 offset_idx = idx + 1
                 if not version_digits[offset_idx]:
                     version_digits[offset_idx] = 0
-                version_digits[offset_idx] = version_digits[idx]
             return tuple(int(digit) for digit in version_digits)
     return None
 
@@ -499,5 +498,6 @@ def _ruff_format(path: pathlib.Path) -> None:
 
 
 if "__main__" == __name__:
+    print(_version_parse("v1.2.3"))
     os.chdir("/Users/reggie.pierce/Projects/reggie-bricks-py")
     sync()
