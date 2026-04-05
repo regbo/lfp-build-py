@@ -78,7 +78,8 @@ pip install -e .
 
 ### Create
 
-<!-- BEGIN:cmd lfp-build create --help -->
+
+
 ```shell
 Usage: lfp-build create COMMAND [OPTIONS] NAME
 
@@ -105,7 +106,8 @@ dependencies are automatically synchronized after creation.
 │                              project's dependencies.                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
-<!-- END:cmd -->
+
+
 
 ```bash
 # Create a new project
@@ -140,7 +142,8 @@ Created projects include:
 
 ### Sync
 
-<!-- BEGIN:cmd lfp-build sync --help -->
+
+
 ```shell
 Usage: lfp-build sync [OPTIONS]
 
@@ -173,7 +176,8 @@ aligned with the root project settings and ensure consistent dependencies.
 │                               [default: True]                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
-<!-- END:cmd -->
+
+
 
 ```bash
 # Sync all configuration
@@ -188,7 +192,8 @@ uv run lfp-build sync --no-version --no-format-python
 
 ### Dist
 
-<!-- BEGIN:cmd lfp-build dist --help -->
+
+
 ```shell
 Usage: lfp-build dist [OPTIONS]
 
@@ -210,7 +215,8 @@ copying artifacts to out_dir.
 │                      dist]                                                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
-<!-- END:cmd -->
+
+
 
 ```bash
 # Build wheel artifacts for every workspace project
@@ -222,7 +228,8 @@ uv run lfp-build dist --name common --name api
 
 ### Rename
 
-<!-- BEGIN:cmd lfp-build rename --help -->
+
+
 ```shell
 Usage: lfp-build rename [ARGS]
 
@@ -234,7 +241,8 @@ Usage: lfp-build rename [ARGS]
 │   --dash-to-underscore                                                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
-<!-- END:cmd -->
+
+
 
 ```bash
 # Rename strings in files and folder names recursively
@@ -249,7 +257,8 @@ uv run lfp-build rename old-name:new-name --dash-to-underscore
 
 ### README
 
-<!-- BEGIN:cmd lfp-build readme --help -->
+
+
 ```shell
 Usage: lfp-build readme COMMAND
 
@@ -260,7 +269,8 @@ Usage: lfp-build readme COMMAND
 │ --working-directory  Set the current working directory.                      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
-<!-- END:cmd -->
+
+
 
 Automatically update README.md files by executing help commands embedded in sentinel blocks.
 
@@ -424,13 +434,13 @@ Core dependencies:
 
 - `LOG_LEVEL`: Control logging verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 - `LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE`: Controls how internal workspace
-  dependencies are written during sync and metadata repair.
+dependencies are written during sync and metadata repair.
   - `false` (default): keep internal dependencies as plain names (for example,
-    `common`) and maintain `tool.uv.sources.<dep>.workspace = true`.
+  `common`) and maintain `tool.uv.sources.<dep>.workspace = true`.
   - `true`: write internal dependencies as
-    `name @ file://${PROJECT_ROOT}/...`. During `dist`, built wheel metadata is
-    inspected and workspace-local `Requires-Dist: ... @ file://...` entries are
-    rewritten to plain dependency names before copy.
+  `name @ file://${PROJECT_ROOT}/...`. During `dist`, built wheel metadata is
+  inspected and workspace-local `Requires-Dist: ... @ file://...` entries are
+  rewritten to plain dependency names before copy.
 
 ## Extending lfp-build
 
