@@ -959,8 +959,8 @@ packages:
   timestamp: 1770267209884
 - pypi: ./
   name: lfp-build
-  version: 0.1.0
-  sha256: 158a17184688f7f6666b25c48d40630c5bc170c9e5c7330a3c6b248313cedfd4
+  version: 0.1.1
+  sha256: 0fc918336419ff313649d3d22e113dcbfb913add3045cce630865d9280440650
   requires_dist:
   - uv>=0.9.9
   - cyclopts
