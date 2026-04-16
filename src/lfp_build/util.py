@@ -48,10 +48,11 @@ def process_start(
         Lines from stdout as they are produced
     """
     commands = [str(c) for c in [program, *args]]
+    stderr_logging_enabled = stderr_log_level is not None and LOG.isEnabledFor(stderr_log_level)
     proc = subprocess.Popen(
         commands,
         stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL if stderr_log_level is None else subprocess.PIPE,
+        stderr=subprocess.PIPE if stderr_logging_enabled else subprocess.DEVNULL,
         text=True,
         cwd=cwd,
         env=env,
@@ -72,7 +73,7 @@ def process_start(
 
     thread: threading.Thread | None = None
     try:
-        if stderr_log_level is not None:
+        if stderr_logging_enabled:
 
             def _log_stderr() -> None:
                 for line in _read_stream(proc.stderr):
