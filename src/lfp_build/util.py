@@ -22,7 +22,6 @@ def process_start(
     program_name: str | None = None,
     stdout_log_level: int | None = None,
     stderr_log_level: int | None = logging.DEBUG,
-    stderr_log_background: bool = False,
     check: bool = True,
     cwd: pathlib.Path = None,
     env: dict | None = None,
@@ -31,7 +30,9 @@ def process_start(
     Start a subprocess and yield its stdout line by line.
 
     Logs stdout and stderr to the configured logger at the specified levels.
-    Stderr is logged but not yielded.
+    Stderr is logged but not yielded. When stderr logging is enabled, stderr is
+    always drained concurrently so large stdout output cannot deadlock the
+    child process.
 
     Args:
         program: The executable to run
@@ -39,7 +40,6 @@ def process_start(
         program_name: Name used in log prefix (defaults to executable path)
         stdout_log_level: Level to log stdout (None to disable)
         stderr_log_level: Level to log stderr (defaults to DEBUG)
-        stderr_log_background: If True, drain and log stderr in a background thread
         check: If True, raises CalledProcessError on non-zero exit code
         cwd: Working directory for the process
         env: Environment variables for the process
@@ -78,11 +78,11 @@ def process_start(
                 for line in _read_stream(proc.stderr):
                     _log_line(line, stderr_log_level)
 
-            if stderr_log_background:
-                thread = threading.Thread(target=_log_stderr)
-                thread.start()
-            else:
-                _log_stderr()
+            thread = threading.Thread(
+                target=_log_stderr,
+                name=f"{program_name if program_name else commands[0]}-stderr",
+            )
+            thread.start()
 
         for line in _read_stream(proc.stdout):
             if stdout_log_level is not None:

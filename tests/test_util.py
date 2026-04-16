@@ -1,6 +1,7 @@
 import logging
 import queue
 import subprocess
+import sys
 import threading
 
 import pytest
@@ -40,8 +41,7 @@ def test_process_start_clean_shutdown() -> None:
         # A command that would run indefinitely printing "hello world"
         cmd = ["sh", "-c", "while true; do echo 'hello world'; sleep 0.1; done"]
 
-        # Run stderr logging in the background so stdout consumption is not blocked.
-        gen = util.process_start(cmd[0], *cmd[1:], check=False, stderr_log_background=True)
+        gen = util.process_start(cmd[0], *cmd[1:], check=False)
         try:
             count = 0
             for line in gen:
@@ -61,3 +61,35 @@ def test_process_start_clean_shutdown() -> None:
     while not lines.empty():
         line = lines.get()
         assert line == "hello world"
+
+
+def test_process_run_does_not_deadlock_when_stdout_fills_before_stderr() -> None:
+    """Test that process_run drains stderr concurrently with large stdout output."""
+
+    result: dict[str, str] = {}
+    errors: list[BaseException] = []
+
+    def _run() -> None:
+        try:
+            result["stdout"] = util.process_run(
+                sys.executable,
+                "-c",
+                (
+                    "import os, sys; "
+                    "os.write(sys.stdout.fileno(), b'x' * (1024 * 1024) + b'\\n'); "
+                    "sys.stdout.flush(); "
+                    "sys.stderr.write('done\\n'); "
+                    "sys.stderr.flush()"
+                ),
+                stderr_log_level=logging.DEBUG,
+            )
+        except BaseException as exc:  # pragma: no cover - surfaced by assertion below
+            errors.append(exc)
+
+    thread = threading.Thread(target=_run)
+    thread.start()
+    thread.join(timeout=5.0)
+
+    assert not thread.is_alive(), "process_run deadlocked while draining subprocess pipes"
+    assert not errors
+    assert len(result["stdout"]) == 1024 * 1024
