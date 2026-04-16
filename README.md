@@ -1,20 +1,19 @@
 # lfp-build
 
-A comprehensive workspace management tool designed to handle complicated and common code generation tasks across
-multi-project Python environments. Built to be adopted by any project requiring automated code generation, workspace
-synchronization, and build orchestration.
+A workspace management CLI for multi-project Python repositories. It helps bootstrap member packages, keep workspace
+`pyproject.toml` files aligned, build wheels, automate README command docs, and perform bulk rename operations.
 
 ## Features
 
-- **Smart Synchronization**: Keep build configs, dependencies, and tool settings consistent across all workspace projects.
-- **Project Scaffolding**: Bootstrap new projects with standard layouts and automatic workspace integration.
-- **Version Coordination**: Manage version strings across multiple projects with git integration.
-- **Multi-platform Support**: Supports macOS (ARM/x64), Linux (ARM/x64), and Windows (x64/ARM).
-- **Automated Publishing**: Integrated with GitHub Actions for automatic PyPI deployment on tagging.
+- **Workspace Sync**: Keep shared build settings, member dependency wiring, and workspace paths consistent.
+- **Project Creation**: Create new member packages or bootstrap a new workspace root with a starter package.
+- **Wheel Builds**: Build wheel artifacts for all workspace members or a selected subset.
+- **README Automation**: Refresh command output blocks embedded in documentation files.
+- **Bulk Renames**: Rewrite names across files and directories, with optional dash-to-underscore handling.
 
 ## Installation
 
-This package requires Python >= 3.11 and < 3.14.
+This package requires Python >= 3.11.
 
 You can install `lfp-build` directly from GitHub using `pip`:
 
@@ -394,7 +393,7 @@ Common utilities including logging initialization and subprocess management.
 
 ### pyproject.py
 
-Utility for managing and manipulating pyproject.toml files using tomlkit and taplo.
+Utilities for reading, updating, ordering, and formatting `pyproject.toml` files.
 
 ### workspace.py
 
@@ -406,7 +405,7 @@ Utilities for creating new workspace member projects.
 
 ### workspace_sync.py
 
-Core synchronization logic for versions, build systems, and dependencies.
+Core synchronization logic for versions, build systems, member settings, and dependencies.
 
 ### workspace_dist.py
 
@@ -416,6 +415,10 @@ Build distribution artifacts for workspace projects.
 
 Automated README documentation updater using command output sentinels.
 
+### rename.py
+
+Bulk file-content and directory rename utilities.
+
 ## Development
 
 ### Dependencies
@@ -424,11 +427,17 @@ Core dependencies:
 
 - `uv`: Workspace and dependency management
 - `ruff`: Python formatting and linting
-- `taplo`: TOML formatting
 - `cyclopts`: CLI framework
+- `lfp-logging`: Logging facade used across the CLI
+- `python-dotenv`: Loads environment configuration from `.env` files
 - `tomlkit`: TOML manipulation
-- `dacite`: Dataclass conversion
+- `mergedeep`: Deep merge support for synced config tables
 - `sitecustomize-entrypoints`: Automatic config initialization via `lfp_build._config:load` (loads `.dev.env` by default, override with `PYTHON_DOTENV_FILE`)
+
+Optional external tools:
+
+- `taplo`: Preferred TOML formatter when available
+- `tombi`: Fallback TOML formatter used when `taplo` is unavailable on supported platforms
 
 ### Environment Variables
 
@@ -456,15 +465,8 @@ The modular architecture makes it easy to add new commands for your specific nee
 
 ## Real-World Examples
 
-### Microservice Architecture
-
-Use lfp-build to manage a microservice ecosystem where each service has its own project but shares common
-infrastructure code, build configs, and deployment settings.
-
-### Monorepo Management
-
-Coordinate builds, tests, and deployments across dozens of related Python packages with consistent tooling and
-dependencies.
+Use lfp-build to manage a Python monorepo where packages share workspace metadata, internal dependencies, formatting,
+and release artifacts.
 
 ## License
 

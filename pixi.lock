@@ -959,8 +959,8 @@ packages:
   timestamp: 1770267209884
 - pypi: ./
   name: lfp-build
-  version: 0.1.1
-  sha256: 0fc918336419ff313649d3d22e113dcbfb913add3045cce630865d9280440650
+  version: 0.1.2
+  sha256: dcb873141a4ba330514f3e85e9c801ee57617625eec1816baeaa81786d65dfc3
   requires_dist:
   - uv>=0.9.9
   - cyclopts
@@ -970,7 +970,7 @@ packages:
   - tomlkit
   - mergedeep
   - ruff
-  requires_python: '>=3.11,<3.14'
+  requires_python: '>=3.11'
 - pypi: https://files.pythonhosted.org/packages/ff/d6/35637dc4b0d2f299d6de833ef7e4a506ad77855e8496c28a7077f3b61e03/lfp_logging-0.0.9-py3-none-any.whl
   name: lfp-logging
   version: 0.0.9
