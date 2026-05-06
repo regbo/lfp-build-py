@@ -9,7 +9,7 @@ import types
 from collections.abc import Callable
 from dataclasses import dataclass
 from os import PathLike
-from typing import Generic, Never, TypeVar
+from typing import Generic, NoReturn, TypeVar
 
 from dotenv import load_dotenv
 
@@ -74,7 +74,7 @@ def _load_dotenv() -> None:
                 load_dotenv(env_file, override=False)
 
 
-def _dump(sig: int, frame: types.FrameType | None) -> Never:
+def _dump(sig: int, frame: types.FrameType | None) -> NoReturn:
     faulthandler.dump_traceback(file=sys.stderr, all_threads=True)
     raise KeyboardInterrupt
 

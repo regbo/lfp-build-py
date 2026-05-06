@@ -256,8 +256,12 @@ def _hash(path: pathlib.Path) -> str:
 
     Used to detect if formatting or data changes actually modified the file.
     """
+    # Streamed read for compatibility with Python <3.11 (no hashlib.file_digest).
+    digest = hashlib.md5()
     with open(path, "rb") as f:
-        return hashlib.file_digest(f, "md5").hexdigest()
+        for chunk in iter(lambda: f.read(65536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _git_repo_name(path: pathlib.Path) -> str | None:

@@ -1,6 +1,6 @@
 import pathlib
 import zipfile
-from typing import Never
+from typing import NoReturn
 
 import pytest
 
@@ -192,7 +192,7 @@ def test_dist_skips_wheel_metadata_rewrite_when_direct_reference_off(monkeypatch
     monkeypatch.delenv("LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE", raising=False)
     monkeypatch.setattr(workspace_dist.workspace, "metadata", lambda: metadata)
 
-    def _normalize_wheels(**kwargs) -> Never:
+    def _normalize_wheels(**kwargs) -> NoReturn:
         raise AssertionError("wheel metadata rewrite should be skipped when disabled")
 
     monkeypatch.setattr(
