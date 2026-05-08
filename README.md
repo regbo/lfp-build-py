@@ -13,34 +13,43 @@ A workspace management CLI for multi-project Python repositories. It helps boots
 
 ## Installation
 
-This package requires Python >= 3.11.
+This package requires Python >= 3.10.12 and is published to PyPI:
+[pypi.org/project/lfp-build](https://pypi.org/project/lfp-build/).
 
-You can install `lfp-build` directly from GitHub using `pip`:
+Install the latest released version from PyPI:
+
+```bash
+pip install lfp-build
+```
+
+To install the latest unreleased version directly from GitHub:
 
 ```bash
 pip install git+https://github.com/regbo/lfp-build-py.git
 ```
 
-Or add it to your `pyproject.toml` dependencies:
+### As a Dev Dependency (Recommended)
 
-```toml
-dependencies = [
-    "lfp-build @ git+https://github.com/regbo/lfp-build-py.git"
-]
-```
-
-### For Use in Your Project (Recommended)
-
-lfp-build is designed to be used as a development dependency. Add it to your `pyproject.toml`:
+lfp-build is designed to be used as a development dependency so it stays out of your project's runtime
+dependencies while remaining available to every contributor and CI job. Add it to your `pyproject.toml`:
 
 ```toml
 [dependency-groups]
 dev = [
-    "lfp-build @ git+https://github.com/regbo/lfp-build-py.git"
+    "lfp-build",
 ]
 ```
 
-Then use it via `uv run` without polluting your production dependencies:
+Or, to track the latest unreleased version from GitHub:
+
+```toml
+[dependency-groups]
+dev = [
+    "lfp-build @ git+https://github.com/regbo/lfp-build-py.git",
+]
+```
+
+Then invoke it through `uv run`:
 
 ```bash
 # Sync configurations
@@ -48,20 +57,6 @@ uv run lfp-build sync
 
 # Create new projects
 uv run lfp-build create new-service
-```
-
-Using `uv run` ensures lfp-build and its dependencies are isolated from your project's runtime dependencies while
-remaining available for all developers and CI/CD environments.
-
-### CLI-first setup
-
-Use the package directly via `pip` or as a dev tool through `uv run`. This project does not require a curl-based bootstrap installer.
-
-Examples:
-
-```bash
-pip install git+https://github.com/regbo/lfp-build-py.git
-uv run lfp-build --help
 ```
 
 ### For lfp-build Development
