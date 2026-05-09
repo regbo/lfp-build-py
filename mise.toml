@@ -2,12 +2,10 @@
 git = "latest"
 uv = "latest"
 
-[tasks.uv-sync]
-run = "uv sync --dev"
+
 
 [tasks.ruff-fix]
-depends = ["uv-sync"]
-run = "ruff check . --fix --unsafe-fixes && ruff format ."
+run = "uv run ruff check . --fix --unsafe-fixes && ruff format ."
 
 [tasks.publish]
 description = "Stage changes, bump version, push tags. Mirrors the pixi publish task."
@@ -21,6 +19,6 @@ git add .
 if ! git diff --staged --quiet; then
   git commit -m "pre-release: staging changes"
 fi
-bump-my-version bump "{{ usage.part }}" --message "{{ usage.message }}"
+uv run bump-my-version bump "{{ usage.part }}" --message "{{ usage.message }}"
 git push origin HEAD --tags
 '''
