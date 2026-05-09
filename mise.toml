@@ -1,17 +1,17 @@
 [tools]
-git = "latest"
 uv = "latest"
 
 
-
 [tasks.ruff-fix]
-run = "uv run ruff check . --fix --unsafe-fixes && ruff format ."
+run = "uv run ruff check . --fix --unsafe-fixes && uv run ruff format ."
 
 [tasks.publish]
 description = "Stage changes, bump version, push tags. Mirrors the pixi publish task."
 depends = ["ruff-fix"]
 usage = '''
-arg "[part]" default="patch" help="Version part to bump (patch|minor|major)"
+arg "<part>" default="patch" help="Version part to bump" {
+  choices "patch" "minor" "major"
+}
 flag "-m --message <message>" default="incrementing version to {new_version}" help="Commit message template forwarded to bump-my-version"
 '''
 run = '''

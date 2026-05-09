@@ -4,12 +4,14 @@ import os
 import pathlib
 import re
 import subprocess
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
 from lfp_logging import logs
 
 from lfp_build import _config, util
+from lfp_build.pyproject import PyProject
 
 """
 Interface for uv workspace metadata.
@@ -123,28 +125,35 @@ def normalize_member_dependency(
     return dep_name, dep_name
 
 
-def sync_workspace_sources(
-    *, source_table: Any, member_dependencies: list[str], proj_name: str | None = None
-) -> None:
+def sync_workspace_sources(*, proj: PyProject, member_dependencies: Iterable[str]) -> None:
     """
     Ensure `tool.uv.sources.<dep>.workspace = true` for active member deps.
 
     Existing workspace source entries for dependencies that are no longer
     present are removed.
     """
-    workspace_key = "workspace"
-    for dep in list(source_table.keys()):
-        workspace_value = source_table.get(dep, {}).get(workspace_key, None)
-        if workspace_value is True and dep not in member_dependencies:
-            source_table.remove(dep)
-            LOG.debug(
-                "Removed source - key:%s proj:%s dependency:%s",
-                workspace_key,
-                proj_name if proj_name is not None else "[unknown]",
-                dep,
-            )
-    for member_dependency_name in member_dependencies:
-        source_table.update({member_dependency_name: {workspace_key: True}})
+    member_dependencies = sorted(member_dependencies) if member_dependencies else []
+    sources_table_required = bool(member_dependencies)
+    source_table = proj.table("tool", "uv", "sources", create=sources_table_required)
+    if source_table is None:
+        return
+    elif not sources_table_required:
+        proj.data.get("tool", {}).get("uv", {}).pop("sources", None)
+        return
+    else:
+        workspace_key = "workspace"
+        for dep in list(source_table.keys()):
+            workspace_value = source_table.get(dep, {}).get(workspace_key, None)
+            if workspace_value is True and dep not in member_dependencies:
+                source_table.remove(dep)
+                LOG.debug(
+                    "Removed source - key:%s proj:%s dependency:%s",
+                    workspace_key,
+                    proj.path,
+                    dep,
+                )
+        for member_dependency_name in member_dependencies:
+            source_table.update({member_dependency_name: {workspace_key: True}})
 
 
 def metadata(path: pathlib.Path = None) -> Metadata:
