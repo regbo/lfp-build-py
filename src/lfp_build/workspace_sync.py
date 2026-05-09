@@ -275,7 +275,7 @@ def sync_member_project_dependencies(
 
     if members:
         root_proj = pyproject_tree.root
-        uv_sources = [{member_name: {"workspace": True}} for member_name in sorted(members.keys())]
+        uv_sources = {member_name: {"workspace": True} for member_name in sorted(members.keys())}
         LOG.debug("tool.uv.sources: %s", uv_sources)
         root_proj.data.get("tool", {}).get("uv", {})["sources"] = uv_sources
 
