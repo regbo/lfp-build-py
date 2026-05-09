@@ -271,6 +271,14 @@ def sync_member_project_dependencies(
     """
     if unfiltered_pyproject_tree.filtered:
         raise ValueError("Unfiltered workspace tree required for member project dependencies sync")
+    members = unfiltered_pyproject_tree.members
+
+    if members:
+        root_proj = pyproject_tree.root
+        uv_sources = [{member_name: {"workspace": True}} for member_name in sorted(members.keys())]
+        LOG.debug("tool.uv.sources: %s", uv_sources)
+        root_proj.data.get("tool", {}).get("uv", {})["sources"] = uv_sources
+
     for proj in pyproject_tree.projects():
         _sync_member_project_dependencies(unfiltered_pyproject_tree, proj)
 
