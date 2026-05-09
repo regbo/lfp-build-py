@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools
 import hashlib
 import logging
@@ -161,7 +163,7 @@ class PyProjectTree:
         """
         return [self.root, *self.members.values()]
 
-    def filter_members(self, names: list[str] | None, required: bool = False) -> "PyProjectTree":
+    def filter_members(self, names: list[str] | None, required: bool = False) -> PyProjectTree:
         """
         Create a new tree containing only the specified member projects.
 

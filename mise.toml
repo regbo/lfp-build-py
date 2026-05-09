@@ -9,7 +9,7 @@ run = "uv run ruff check . --fix --unsafe-fixes && uv run ruff format ."
 description = "Stage changes, bump version, push tags. Mirrors the pixi publish task."
 depends = ["ruff-fix"]
 usage = '''
-arg "<part>" default="patch" help="Version part to bump" {
+arg "<version_part>" default="patch" help="Version part to bump" {
   choices "patch" "minor" "major"
 }
 flag "-m --message <message>" default="incrementing version to {new_version}" help="Commit message template forwarded to bump-my-version"
@@ -19,6 +19,6 @@ git add .
 if ! git diff --staged --quiet; then
   git commit -m "pre-release: staging changes"
 fi
-uv run bump-my-version bump "{{ usage.part }}" --message "{{ usage.message }}"
+uv run bump-my-version bump "{{ usage.version_part }}" --message "{{ usage.message }}"
 git push origin HEAD --tags
 '''

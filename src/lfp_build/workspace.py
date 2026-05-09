@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools
 import json
 import os
@@ -32,7 +34,7 @@ class Metadata:
     """
 
     workspace_root: pathlib.Path
-    members: list["MetadataMember"]
+    members: list[MetadataMember]
 
 
 @dataclass
@@ -156,7 +158,7 @@ def sync_workspace_sources(*, proj: PyProject, member_dependencies: Iterable[str
             source_table.update({member_dependency_name: {workspace_key: True}})
 
 
-def metadata(path: pathlib.Path = None) -> Metadata:
+def metadata(path: pathlib.Path | None = None) -> Metadata:
     """
     Retrieve metadata for a uv workspace with repair-and-fallback behavior.
 
