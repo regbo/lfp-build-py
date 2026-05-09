@@ -3,9 +3,10 @@ git = "latest"
 uv = "latest"
 
 [tasks.uv-sync]
-run = "uv sync --all-groups"
+run = "uv sync --dev"
 
 [tasks.ruff-fix]
+depends = ["uv-sync"]
 run = "ruff check . --fix --unsafe-fixes && ruff format ."
 
 [tasks.publish]
