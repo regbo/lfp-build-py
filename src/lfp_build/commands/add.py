@@ -36,7 +36,7 @@ def add(
         list[str] | None,
         cyclopts.Parameter(alias="-d", negative=""),
     ] = None,
-    prefix_root_project_nane: Annotated[
+    prefix_root_project: Annotated[
         bool,
         cyclopts.Parameter(alias="-r", negative=""),
     ] = True,
@@ -60,8 +60,8 @@ def add(
     dependency
         Additional dependency strings to add to the new project's
         ``project.dependencies`` array.
-    prefix_root_project_nane
-        If True, prefix the new project name with the root project name.
+    prefix_root_project
+        If True, prefix the new project name and package path with the root project name.
     """
     metadata = workspace.metadata()
     root_dir = metadata.workspace_root
@@ -69,11 +69,14 @@ def add(
     path = root_dir / path
     if not path.is_relative_to(root_dir):
         raise ValueError(f"Path must be relative to root - root:{root_dir} path:{path}")
-    if prefix_root_project_nane:
+
+    if prefix_root_project:
         root_project_name = pyproject.tree(metadata).name
         project_name = f"{root_project_name}-{name}"
+        module_name_parts = [name.replace("-", "_") for name in [root_project_name, name]]
     else:
         project_name = name
+        module_name_parts = [name.replace("-", "_")]
     project_dir = path / project_name
     pyproject_path = project_dir / _config.PYPROJECT_FILE_NAME
 
@@ -83,13 +86,22 @@ def add(
     project_dir.mkdir(parents=True, exist_ok=True)
     LOG.info("Creating member project: %s", project_dir)
 
-    pyproject_data = {
-        "project": {
-            "name": project_name,
-            "version": "0",
-            "requires-python": ">=3.6",
-        },
-    }
+    pyproject_data = tomlkit.document()
+    pyproject_project_table = tomlkit.table(True)
+    pyproject_project_table.add("name", project_name)
+    pyproject_project_table.add("version", "0")
+    pyproject_project_table.add("requires-python", ">=3.6")
+    pyproject_data.add("project", pyproject_project_table)
+
+    if len(module_name_parts) > 1:
+        pyproject_build_backend = tomlkit.table(True)
+        pyproject_build_backend.add("namespace", True)
+        pyproject_build_backend.add("module-root", "src")
+        pyproject_build_backend.add("module-name", ".".join(module_name_parts))
+        tool = pyproject_data.setdefault("tool", tomlkit.table(True))
+        uv = tool.setdefault("uv", tomlkit.table(True))
+        uv.add("build-backend", pyproject_build_backend)
+
     pyproject_tree = pyproject.tree(metadata=metadata)
     deps = tomlkit.array()
     deps.multiline(True)
@@ -117,7 +129,9 @@ def add(
 
     pyproject_path.write_text(tomlkit.dumps(pyproject_data))
 
-    package_dir = project_dir / "src" / project_name.replace("-", "_")
+    package_dir = project_dir / "src"
+    for module_name_part in module_name_parts:
+        package_dir = package_dir / module_name_part
     package_dir.mkdir(parents=True, exist_ok=True)
     (package_dir / "__init__.py").touch()
     sync_cmd.sync(new_pyprojects={project_name: pyproject.PyProject(pyproject_path)})
