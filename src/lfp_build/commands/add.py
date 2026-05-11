@@ -36,6 +36,10 @@ def add(
         list[str] | None,
         cyclopts.Parameter(alias="-d", negative=""),
     ] = None,
+    prefix_root_project_nane: Annotated[
+        bool,
+        cyclopts.Parameter(alias="-r", negative=""),
+    ] = True,
 ) -> None:
     """
     Add a new member project to the workspace.
@@ -56,14 +60,21 @@ def add(
     dependency
         Additional dependency strings to add to the new project's
         ``project.dependencies`` array.
+    prefix_root_project_nane
+        If True, prefix the new project name with the root project name.
     """
     metadata = workspace.metadata()
     root_dir = metadata.workspace_root
+
     path = root_dir / path
     if not path.is_relative_to(root_dir):
         raise ValueError(f"Path must be relative to root - root:{root_dir} path:{path}")
-
-    project_dir = path / name
+    if prefix_root_project_nane:
+        root_project_name = pyproject.tree(metadata).name
+        project_name = f"{root_project_name}-{name}"
+    else:
+        project_name = name
+    project_dir = path / project_name
     pyproject_path = project_dir / _config.PYPROJECT_FILE_NAME
 
     if pyproject_path.exists():
@@ -74,7 +85,7 @@ def add(
 
     pyproject_data = {
         "project": {
-            "name": name,
+            "name": project_name,
             "version": "0",
             "requires-python": ">=3.6",
         },
@@ -106,9 +117,9 @@ def add(
 
     pyproject_path.write_text(tomlkit.dumps(pyproject_data))
 
-    package_dir = project_dir / "src" / name.replace("-", "_")
+    package_dir = project_dir / "src" / project_name.replace("-", "_")
     package_dir.mkdir(parents=True, exist_ok=True)
     (package_dir / "__init__.py").touch()
-    sync_cmd.sync(new_pyprojects={name: pyproject.PyProject(pyproject_path)})
-    LOG.info("Member project created: %s", name)
+    sync_cmd.sync(new_pyprojects={project_name: pyproject.PyProject(pyproject_path)})
+    LOG.info("Member project created: %s", project_name)
     workspace.clear_metadata_cache()

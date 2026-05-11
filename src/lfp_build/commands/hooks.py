@@ -85,9 +85,17 @@ def install(root_dir: pathlib.Path) -> pathlib.Path:
 def _ensure_git_repo(root_dir: pathlib.Path) -> None:
     """
     Initialize a git repository in ``root_dir`` when one does not exist.
+
+    Uses ``--initial-branch=main`` so freshly created workspaces start on
+    ``main`` regardless of the user's global ``init.defaultBranch`` setting,
+    which also silences git's default-branch hint.
     """
     if not (root_dir / ".git").exists():
-        subprocess.run(["git", "init"], cwd=root_dir, check=True)
+        subprocess.run(
+            ["git", "init", "--initial-branch=main"],
+            cwd=root_dir,
+            check=True,
+        )
 
 
 def _ensure_pre_commit_hook(root_dir: pathlib.Path) -> pathlib.Path:

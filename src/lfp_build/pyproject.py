@@ -61,6 +61,13 @@ class PyProject:
                 self._data = tomlkit.load(f)
         return self._data
 
+    @property
+    def name(self) -> str | None:
+        """
+        Return the name of the project.
+        """
+        return self.data.get("project", {}).get("name", None)
+
     def persist(self, force_format: bool = False) -> str | None:
         """
         Save the current state of the project configuration to disk.
@@ -256,8 +263,6 @@ def _reorder_document(proj: PyProject) -> None:
         for k, v in group:
             data.add(k, v)
 
-    print(data)
-
 
 def tree(metadata: workspace.Metadata | None = None) -> PyProjectTree:
     """
@@ -276,8 +281,12 @@ def tree(metadata: workspace.Metadata | None = None) -> PyProjectTree:
             continue
         member_projs[member.name] = PyProject(member.path)
     root_proj: PyProject = PyProject(metadata.workspace_root)
+    if not root_proj_name:
+        root_proj_name = _git_repo_name(root_proj.path)
+    if not root_proj_name:
+        root_proj_name = root_proj.path.absolute().parent.name
     return PyProjectTree(
-        name=root_proj_name or _git_repo_name(root_proj.path) or root_proj.path.name,
+        name=root_proj_name,
         root=root_proj,
         members=member_projs,
     )

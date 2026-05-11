@@ -89,7 +89,7 @@ def init(
             "lfp-logging",
             *(dependency or []),
         ]
-        add_cmd.add("common", path=add_cmd.DEFAULT_PARENT_PATH, dependency=common_deps)
+        add_cmd.add("core", path=add_cmd.DEFAULT_PARENT_PATH, dependency=common_deps)
     finally:
         os.chdir(old_cwd)
 
