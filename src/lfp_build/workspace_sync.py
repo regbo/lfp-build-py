@@ -5,7 +5,7 @@ import time
 from collections import defaultdict
 from collections.abc import Collection
 from copy import deepcopy
-from typing import Annotated, Any
+from typing import Annotated, Any, Iterable
 
 import cyclopts
 import mergedeep
@@ -272,9 +272,9 @@ def sync_member_project_dependencies(
     if unfiltered_pyproject_tree.filtered:
         raise ValueError("Unfiltered workspace tree required for member project dependencies sync")
     member_names = unfiltered_pyproject_tree.members.keys()
-    workspace.sync_workspace_sources(proj=pyproject_tree.root, member_dependencies=member_names)
+    _sync_sources(proj=pyproject_tree.root, member_dependencies=member_names)
 
-    for proj in pyproject_tree.projects():
+    for proj in pyproject_tree.members.values():
         _sync_member_project_dependencies(unfiltered_pyproject_tree, proj)
 
 
@@ -302,7 +302,52 @@ def _sync_member_project_dependencies(pyproject_tree: PyProjectTree, proj: PyPro
             dependencies[idx] = normalized_dep
             member_dependencies.append(member_dependency_name)
 
-    workspace.sync_workspace_sources(proj=proj, member_dependencies=member_dependencies)
+    _sync_sources(proj=proj, member_dependencies=member_dependencies)
+
+
+def _sync_sources(*, proj: PyProject, member_dependencies: Iterable[str]) -> None:
+    """
+    Ensure `tool.uv.sources.<dep>.workspace = true` for active member deps.
+
+    Each entry is written as an inline table so it renders as
+    `dep = { workspace = true }` under a single `[tool.uv.sources]` header,
+    rather than as a separate `[tool.uv.sources.<dep>]` sub-table.
+
+    Existing workspace source entries for dependencies that are no longer
+    present are removed.
+    """
+    import tomlkit
+
+    member_dependencies = sorted(member_dependencies) if member_dependencies else []
+    sources_table_required = bool(member_dependencies)
+    source_table = proj.table("tool", "uv", "sources", create=sources_table_required)
+    if source_table is None:
+        return
+    elif not sources_table_required:
+        proj.data.get("tool", {}).get("uv", {}).pop("sources", None)
+        return
+    else:
+        workspace_key = "workspace"
+        for dep in list(source_table.keys()):
+            workspace_value = source_table.get(dep, {}).get(workspace_key, None)
+            if workspace_value is True and dep not in member_dependencies:
+                source_table.remove(dep)
+                LOG.debug(
+                    "Removed source - key:%s proj:%s dependency:%s",
+                    workspace_key,
+                    proj.path,
+                    dep,
+                )
+        for member_dependency_name in member_dependencies:
+            LOG.debug(
+                "Setting source - key:%s proj:%s dependency:%s",
+                workspace_key,
+                proj.path,
+                member_dependency_name,
+            )
+            inline_value = tomlkit.inline_table()
+            inline_value[workspace_key] = True
+            source_table[member_dependency_name] = inline_value
 
 
 def sync_member_paths(
@@ -496,5 +541,5 @@ def _ruff_format(path: pathlib.Path) -> None:
 
 if "__main__" == __name__:
     print(_version_parse("v1.2.3"))
-    os.chdir("/Users/reggie.pierce/Projects/reggie-bricks-py")
+    os.chdir("/Users/reggie.pierce/Projects/github-reggie-db/dbx-tools")
     sync()
