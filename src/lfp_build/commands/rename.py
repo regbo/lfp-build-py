@@ -7,7 +7,7 @@ from typing import Annotated
 import cyclopts
 from lfp_logging import logs
 
-from lfp_build import workspace
+from lfp_build import names, workspace
 
 """
 Implements ``lfp-build rename``.
@@ -152,7 +152,7 @@ def _variants(value: str, dash_to_underscore: bool) -> Iterable[str]:
     """
     if dash_to_underscore:
         yield value
-        yield value.replace("-", "_")
+        yield names.module_name(value)
     else:
         yield value
 
@@ -199,7 +199,7 @@ def _process_files(root: Path, workspace_root: Path, args: RenameArgs) -> None:
 
             for src, dst in mappings.items():
                 for s in _variants(src, args.dash_to_underscore):
-                    d = dst if s == src else dst.replace("-", "_")
+                    d = dst if s == src else names.module_name(dst)
                     if s in updated:
                         updated = updated.replace(s, d)
                         changed = True
@@ -228,7 +228,7 @@ def _rename_dirs(root: Path, workspace_root: Path, args: RenameArgs) -> None:
 
     for src, dst in mappings.items():
         for s in _variants(src, args.dash_to_underscore):
-            d = dst if s == src else dst.replace("-", "_")
+            d = dst if s == src else names.module_name(dst)
 
             for directory in dirs:
                 if _is_in_workspace(directory, workspace_root):

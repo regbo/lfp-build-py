@@ -200,6 +200,10 @@ aligned with the root project settings and ensure consistent dependencies.
 │                      references; otherwise plain member names are used.      │
 │                      [default: True]                                         │
 │ --member-paths       Sync member path patterns. [default: True]              │
+│ --pyrefly            Maintain [tool.pyrefly].search-path on the root project │
+│                      as ["."] plus, for each member that declares            │
+│                      [tool.uv.build-backend].module-root, the relative path  │
+│                      to that module root. [default: True]                    │
 │ --reorder-pyproject  Order pyproject entries where applicable. [default:     │
 │                      True]                                                   │
 │ --format-pyproject   Format pyproject.toml files using taplo. [default:      │

@@ -6,14 +6,13 @@ from lfp_build.commands import sync as sync_cmd
 
 
 def test_workspace_add_member(temp_workspace) -> None:
-    """Test creating a new member project."""
-    project_name = "new-pkg"
-    add_cmd.add(project_name, path=pathlib.Path("packages"))
+    """Test creating a new member project. Member dirs are root-prefixed by default."""
+    add_cmd.add("new-pkg", path=pathlib.Path("packages"))
 
-    expected_path = temp_workspace / "packages" / project_name
+    expected_path = temp_workspace / "packages" / "test-workspace-new-pkg"
     assert expected_path.exists()
     assert (expected_path / _config.PYPROJECT_FILE_NAME).exists()
-    assert (expected_path / "src" / "new_pkg" / "__init__.py").exists()
+    assert (expected_path / "src" / "test_workspace" / "new_pkg" / "__init__.py").exists()
 
 
 def test_workspace_sync(temp_workspace) -> None:
@@ -130,6 +129,58 @@ version = "0.0.0"
     pkg_a_text = (pkg_a_dir / _config.PYPROJECT_FILE_NAME).read_text()
     assert "pkg-b @ file://${PROJECT_ROOT}/../pkg_b" in pkg_a_text
     assert "workspace = true" in pkg_a_text
+
+
+def test_sync_pyrefly_collects_module_roots(temp_workspace) -> None:
+    """``[tool.pyrefly].search-path`` lists ``.`` plus each member's module-root."""
+    root = temp_workspace
+    pkg_with = root / "packages" / "dbx-tools-core"
+    pkg_with.mkdir(parents=True)
+    (pkg_with / _config.PYPROJECT_FILE_NAME).write_text(
+        """
+[project]
+name = "dbx-tools-core"
+version = "0.0.0"
+
+[tool.uv.build-backend]
+module-root = "src"
+module-name = "dbx_tools.core"
+"""
+    )
+    pkg_without = root / "packages" / "no-build-backend"
+    pkg_without.mkdir(parents=True)
+    (pkg_without / _config.PYPROJECT_FILE_NAME).write_text(
+        """
+[project]
+name = "no-build-backend"
+version = "0.0.0"
+"""
+    )
+
+    tree = pyproject.tree()
+    sync_cmd.sync_pyrefly(tree)
+
+    search_path = list(tree.root.data["tool"]["pyrefly"]["search-path"])
+    assert search_path == [".", "packages/dbx-tools-core/src"]
+
+
+def test_sync_pyrefly_defaults_to_dot_when_no_module_roots(temp_workspace) -> None:
+    """The table is still created with ``["."]`` when no member has a module-root."""
+    pkg = temp_workspace / "packages" / "plain"
+    pkg.mkdir(parents=True)
+    (pkg / _config.PYPROJECT_FILE_NAME).write_text(
+        """
+[project]
+name = "plain"
+version = "0.0.0"
+"""
+    )
+
+    tree = pyproject.tree()
+    sync_cmd.sync_pyrefly(tree)
+
+    search_path = list(tree.root.data["tool"]["pyrefly"]["search-path"])
+    assert search_path == ["."]
 
 
 def test_version_parse_single_part_pads_to_three_parts() -> None:

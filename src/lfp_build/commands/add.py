@@ -5,7 +5,7 @@ import cyclopts
 import tomlkit
 from lfp_logging import logs
 
-from lfp_build import _config, pyproject, workspace
+from lfp_build import _config, names, pyproject, workspace
 from lfp_build.commands import sync as sync_cmd
 
 """
@@ -73,10 +73,10 @@ def add(
     if prefix_root_project:
         root_project_name = pyproject.tree(metadata).name
         project_name = f"{root_project_name}-{name}"
-        module_name_parts = [name.replace("-", "_") for name in [root_project_name, name]]
+        module_name_parts = names.module_name_parts(root_project_name, name)
     else:
         project_name = name
-        module_name_parts = [name.replace("-", "_")]
+        module_name_parts = names.module_name_parts(name)
     project_dir = path / project_name
     pyproject_path = project_dir / _config.PYPROJECT_FILE_NAME
 

@@ -15,9 +15,9 @@ def test_init_command(tmp_path) -> None:
     assert (root / ".git").is_dir()
     assert (root / ".githooks" / "pre-commit").is_file()
 
-    common = root / "packages" / "common"
-    assert common.is_dir()
-    assert (common / _config.PYPROJECT_FILE_NAME).is_file()
+    core = root / "packages" / "agent-demo-core"
+    assert core.is_dir()
+    assert (core / _config.PYPROJECT_FILE_NAME).is_file()
 
     pyproject_text = (root / _config.PYPROJECT_FILE_NAME).read_text()
     assert "[tool.uv.workspace]" in pyproject_text

@@ -33,6 +33,7 @@ def sync(
     member_project: bool = True,
     sources: bool = True,
     member_paths: bool = True,
+    pyrefly: bool = True,
     reorder_pyproject: bool = True,
     format_pyproject: bool = True,
     format_python: bool = True,
@@ -65,6 +66,11 @@ def sync(
         otherwise plain member names are used.
     member_paths
         Sync member path patterns.
+    pyrefly
+        Maintain ``[tool.pyrefly].search-path`` on the root project as
+        ``["."]`` plus, for each member that declares
+        ``[tool.uv.build-backend].module-root``, the relative path to that
+        module root.
     reorder_pyproject
         Order pyproject entries where applicable.
     format_pyproject
@@ -90,6 +96,8 @@ def sync(
         sync_sources(unfiltered_pyproject_tree, pyproject_tree)
     if member_paths:
         sync_member_paths(unfiltered_pyproject_tree)
+    if pyrefly:
+        sync_pyrefly(unfiltered_pyproject_tree)
     if reorder_pyproject:
         pyproject.reorder_document(pyproject_tree)
     if format_python:
@@ -291,7 +299,6 @@ def sync_member_paths(
         exclude_patterns,
     )
     workspace_table = root_proj.table(*workspace_key_path, create=True)
-    assert workspace_table is not None
     members_key = "members"
     if members_key in workspace_table:
         if member_patterns:
@@ -302,6 +309,51 @@ def sync_member_paths(
             workspace_table.remove(members_key)
     elif member_patterns:
         workspace_table.update({members_key: member_patterns})
+
+
+def sync_pyrefly(unfiltered_pyproject_tree: PyProjectTree) -> None:
+    """
+    Maintain ``[tool.pyrefly].search-path`` on the root project.
+
+    The array always starts with ``"."`` and then, for every member
+    project that declares ``[tool.uv.build-backend].module-root``,
+    appends the path ``<member_dir>/<module-root>`` rendered relative
+    to the root project. Member entries are sorted for deterministic
+    output. Other keys under ``[tool.pyrefly]`` are left untouched.
+    """
+    if unfiltered_pyproject_tree.filtered:
+        raise ValueError("Unfiltered workspace tree required for pyrefly sync")
+    root_proj = unfiltered_pyproject_tree.root
+    root_dir = root_proj.path.parent.resolve()
+
+    extra_paths: list[str] = []
+    for member in unfiltered_pyproject_tree.members.values():
+        # tool.uv.build-backend.module-root is set by uv-build-style projects
+        # to point at the directory holding the importable package.
+        build_backend = member.data.get("tool", {}).get("uv", {}).get("build-backend", {})
+        module_root = build_backend.get("module-root", None)
+        if not module_root:
+            continue
+        module_root_path = (member.path.parent / str(module_root)).resolve()
+        try:
+            rel_path = module_root_path.relative_to(root_dir).as_posix()
+        except ValueError:
+            LOG.debug(
+                "Skip pyrefly entry - module_root outside root: member=%s path=%s",
+                member,
+                module_root_path,
+            )
+            continue
+        extra_paths.append(rel_path)
+
+    search_paths = [".", *sorted(extra_paths)]
+    # Walk via setdefault so this works whether ``[tool]`` is a real Table
+    # or an OutOfOrderTableProxy synthesized by tomlkit when several
+    # ``[tool.X]`` sub-tables exist - the OutOfOrderTableProxy supports
+    # MutableMapping.setdefault but not PyProject.table(create=True).
+    tool_table = root_proj.data.setdefault("tool", tomlkit.table())
+    pyrefly_table = tool_table.setdefault("pyrefly", tomlkit.table())
+    pyrefly_table["search-path"] = search_paths
 
 
 def _workspace_member_paths(

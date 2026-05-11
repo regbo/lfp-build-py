@@ -10,7 +10,7 @@ import subprocess
 from collections.abc import Collection, Mapping, MutableMapping
 from dataclasses import dataclass, field
 from tempfile import NamedTemporaryFile
-from typing import Any
+from typing import Any, Literal, overload
 from urllib.parse import urlparse
 
 import tomlkit
@@ -118,6 +118,12 @@ class PyProject:
             self._data = None
             if temp_path is not None:
                 temp_path.unlink()
+
+    @overload
+    def table(self, *keys: str, create: Literal[True]) -> Table: ...
+
+    @overload
+    def table(self, *keys: str, create: Literal[False]) -> Table | None: ...
 
     def table(self, *keys: str, create: bool = False) -> Table | None:
         """

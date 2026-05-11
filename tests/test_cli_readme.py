@@ -54,9 +54,9 @@ def test_readme_update(temp_workspace) -> None:
 
 
 def test_cli_add_and_sync(temp_workspace) -> None:
-    """Test add and sync via CLI."""
+    """Test add and sync via CLI. Member dirs are root-prefixed by default."""
     assert _run_cli(["add", "cli-pkg"]) == 0
-    assert (temp_workspace / "packages" / "cli-pkg").exists()
+    assert (temp_workspace / "packages" / "test-workspace-cli-pkg").exists()
 
     assert _run_cli(["sync"]) == 0
 
@@ -64,4 +64,4 @@ def test_cli_add_and_sync(temp_workspace) -> None:
 def test_cli_add_project_dependency_short_flag(temp_workspace) -> None:
     """Ensure --project-dependency works and is not confused with --path."""
     assert _run_cli(["add", "core"]) == 0
-    assert _run_cli(["add", "api", "--project-dependency", "core"]) == 0
+    assert _run_cli(["add", "api", "--project-dependency", "test-workspace-core"]) == 0
