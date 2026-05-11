@@ -72,72 +72,57 @@ pip install -e .
 
 ### Create
 
-
-
+<!-- BEGIN:cmd lfp-build create --help -->
 ```shell
-Usage: lfp-build create COMMAND [OPTIONS] NAME
+Usage: lfp-build create COMMAND
 
-Create a new member project in the workspace.                                   
-
-
-Sets up a pyproject.toml and a standard src//init.py layout. Internal workspace 
-dependencies are automatically synchronized after creation.
+Create new workspace members or bootstrap a new workspace root project.
 
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ member   Create a new member project in the workspace.                       │
 │ project  Create a new workspace root project.                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Parameters ─────────────────────────────────────────────────────────────────╮
-│    --working-directory       Set the current working directory.              │
-│ *  NAME --name               The name of the new project (used for directory │
-│                              and package name). [required]                   │
-│    --path -p                 Optional parent directory within the workspace  │
-│                              root. Defaults to packages/. [default:          │
-│                              packages]                                       │
-│    --project-dependency -pd  List of existing workspace projects to depend   │
-│                              on.                                             │
-│    --dependency -d           Additional dependency strings to add to the new │
-│                              project's dependencies.                         │
+│ --working-directory  Set the current working directory.                      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
-
-
+<!-- END:cmd -->
 
 ```bash
-# Create a new project
-uv run lfp-build create my-project
+# Create a new member package under packages/
+uv run lfp-build create member my-project
 
 # Create a member with dependencies on other workspace projects
-uv run lfp-build create my-api \
+uv run lfp-build create member my-api \
   --project-dependency my-core \
   --project-dependency my-models
 
-# Create in a specific path within the workspace
-uv run lfp-build create my-project --path /path/to/parent
+# Create in a specific subdirectory within the workspace
+uv run lfp-build create member my-project --path services
 
-# Create a new workspace root project (writes root pyproject.toml and creates packages/common)
+# Bootstrap a new workspace root project (writes root pyproject.toml and creates packages/common)
 uv run lfp-build create project agent-demo
 ```
 
-Created projects include:
+Member projects include:
 
 - Standard Python src layout (`src/<package_name>/`)
 - Configured `pyproject.toml` with optional dependencies
-- `__init__.py` for package initialization
-- Workspace integration support
+- An empty `__init__.py` for the package
+- Automatic workspace dependency wiring via `lfp-build sync`
 
 #### Create member vs create project
 
-- `lfp-build create` (or `lfp-build create member`) creates a new member package under the workspace.
+- `lfp-build create member` creates a new member package under the workspace.
 - `lfp-build create project` bootstraps a new workspace root project with:
   - a minimal root `pyproject.toml` configured for uv and pixi
   - `packages/common` created as an initial member
   - a copied local `.gitignore` template (cwd, parent, then repo fallback) if the target project does not already have one
+  - a `.githooks/pre-commit` script that runs `lfp-build sync` before each commit
 
 ### Sync
 
-
-
+<!-- BEGIN:cmd lfp-build sync --help -->
 ```shell
 Usage: lfp-build sync [OPTIONS]
 
@@ -156,11 +141,12 @@ aligned with the root project settings and ensure consistent dependencies.
 │ --member-project-tool         Sync [tool.member-project] from root project   │
 │                               to all member projects. [default: True]        │
 │ --member-project-dependencie  Sync internal member dependencies and uv       │
-│   s                           workspace sources. Dependency format is        │
-│                               controlled by                                  │
-│                               _config.MEMBER_PROJECT_DIRECT_REFERENCE.get()  │
-│                               (plain names when False, ${PROJECT_ROOT} file  │
-│                               references when True). [default: True]         │
+│   s                           workspace sources. Set                         │
+│                               LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE=true │
+│                               to write workspace deps as name @              │
+│                               file://${PROJECT_ROOT}/... references;         │
+│                               otherwise plain member names are used.         │
+│                               [default: True]                                │
 │ --member-paths                Sync member path patterns. [default: True]     │
 │ --reorder-pyproject           Order pyproject entries where applicable.      │
 │                               [default: True]                                │
@@ -170,8 +156,7 @@ aligned with the root project settings and ensure consistent dependencies.
 │                               [default: True]                                │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
-
-
+<!-- END:cmd -->
 
 ```bash
 # Sync all configuration
@@ -186,17 +171,16 @@ uv run lfp-build sync --no-version --no-format-python
 
 ### Dist
 
-
-
+<!-- BEGIN:cmd lfp-build dist --help -->
 ```shell
 Usage: lfp-build dist [OPTIONS]
 
 Build wheel artifacts for workspace projects.                                   
 
-When _config.MEMBER_PROJECT_DIRECT_REFERENCE.get() is True, built wheels are    
-inspected in the temporary output directory and workspace-local Requires-Dist:  
-... @ file://... entries are normalized to plain package requirements before    
-copying artifacts to out_dir.
+When LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE=true, built wheels are inspected 
+in the temporary output directory and workspace-local Requires-Dist: name @     
+file://... entries are normalized to plain package requirements before copying  
+artifacts to out_dir.
 
 ╭─ Parameters ─────────────────────────────────────────────────────────────────╮
 │ --working-directory  Set the current working directory.                      │
@@ -209,8 +193,7 @@ copying artifacts to out_dir.
 │                      dist]                                                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
-
-
+<!-- END:cmd -->
 
 ```bash
 # Build wheel artifacts for every workspace project
@@ -222,21 +205,23 @@ uv run lfp-build dist --name common --name api
 
 ### Rename
 
-
-
+<!-- BEGIN:cmd lfp-build rename --help -->
 ```shell
 Usage: lfp-build rename [ARGS]
 
+Bulk rename strings inside files and directory names.
+
 ╭─ Parameters ─────────────────────────────────────────────────────────────────╮
 │ --working-directory     Set the current working directory.                   │
-│ TRANSFORM --transform   [default: []]                                        │
-│ DRY-RUN --dry-run       [default: False]                                     │
-│ DASH-TO-UNDERSCORE      [default: False]                                     │
-│   --dash-to-underscore                                                       │
+│ TRANSFORM --transform   One or more old:new substitution pairs. [default:    │
+│                         []]                                                  │
+│ DRY-RUN --dry-run       Preview changes without writing or renaming.         │
+│                         [default: False]                                     │
+│ DASH-TO-UNDERSCORE      Also rewrite underscore variants (old_name ->        │
+│   --dash-to-underscore  new_name). [default: False]                          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
-
-
+<!-- END:cmd -->
 
 ```bash
 # Rename strings in files and folder names recursively
@@ -251,10 +236,11 @@ uv run lfp-build rename old-name:new-name --dash-to-underscore
 
 ### README
 
-
-
+<!-- BEGIN:cmd lfp-build readme --help -->
 ```shell
 Usage: lfp-build readme COMMAND
+
+Refresh README command-help sentinel blocks from live --help output.
 
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
 │ update-cmd  Update README command sentinel blocks.                           │
@@ -263,8 +249,7 @@ Usage: lfp-build readme COMMAND
 │ --working-directory  Set the current working directory.                      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
-
-
+<!-- END:cmd -->
 
 Automatically update README.md files by executing help commands embedded in sentinel blocks.
 
@@ -382,29 +367,42 @@ uv run lfp-build sync
 
 ## Module Reference
 
+### cli.py
+
+Top-level Cyclopts entry point that wires together every subcommand group.
+
+### _config.py
+
+Environment configuration loader. Auto-runs at interpreter startup via
+`sitecustomize-entrypoints` to load a dotenv file and resolve runtime flags.
+
 ### util.py
 
-Common utilities including logging initialization and subprocess management.
+Subprocess helpers used across the CLI for logging child stdout/stderr.
 
 ### pyproject.py
 
-Utilities for reading, updating, ordering, and formatting `pyproject.toml` files.
+Read, update, order, and format `pyproject.toml` files via tomlkit, with
+optional taplo/tombi formatting.
 
 ### workspace.py
 
-Interface for uv workspace metadata retrieval.
+Retrieve uv workspace metadata with a filesystem-scan fallback and a
+best-effort source repair pass when uv reports a misconfigured workspace.
 
 ### workspace_create.py
 
-Utilities for creating new workspace member projects.
+Scaffold new workspace member projects and bootstrap a workspace root.
 
 ### workspace_sync.py
 
-Core synchronization logic for versions, build systems, member settings, and dependencies.
+Core synchronization logic for versions, build systems, member settings, uv
+workspace member path patterns, and internal workspace dependencies.
 
 ### workspace_dist.py
 
-Build distribution artifacts for workspace projects.
+Build wheel distribution artifacts for workspace projects, with optional
+``Requires-Dist`` rewriting for workspace-local file URIs.
 
 ### readme.py
 
@@ -427,7 +425,7 @@ Core dependencies:
 - `python-dotenv`: Loads environment configuration from `.env` files
 - `tomlkit`: TOML manipulation
 - `mergedeep`: Deep merge support for synced config tables
-- `sitecustomize-entrypoints`: Automatic config initialization via `lfp_build._config:load` (loads `.dev.env` by default, override with `PYTHON_DOTENV_FILE`)
+- `sitecustomize-entrypoints`: Automatic config initialization via `lfp_build._config:load` (loads `.dev.env` by default, override with `LFP_BUILD_PYTHON_DOTENV_FILE`)
 
 Optional external tools:
 
@@ -436,15 +434,18 @@ Optional external tools:
 
 ### Environment Variables
 
-- `LOG_LEVEL`: Control logging verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- `LOG_LEVEL`: Control logging verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL).
+- `LFP_BUILD_PYTHON_DOTENV_FILE`: Override the dotenv file loaded at startup.
+  Defaults to `.dev.env` (searched in the current working directory and the
+  detected workspace root).
 - `LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE`: Controls how internal workspace
-dependencies are written during sync and metadata repair.
+  dependencies are written during sync and metadata repair.
   - `false` (default): keep internal dependencies as plain names (for example,
-  `common`) and maintain `tool.uv.sources.<dep>.workspace = true`.
+    `common`) and maintain `tool.uv.sources.<dep> = { workspace = true }`.
   - `true`: write internal dependencies as
-  `name @ file://${PROJECT_ROOT}/...`. During `dist`, built wheel metadata is
-  inspected and workspace-local `Requires-Dist: ... @ file://...` entries are
-  rewritten to plain dependency names before copy.
+    `name @ file://${PROJECT_ROOT}/...`. During `dist`, built wheel metadata
+    is inspected and workspace-local `Requires-Dist: ... @ file://...`
+    entries are rewritten to plain dependency names before copy.
 
 ## Extending lfp-build
 

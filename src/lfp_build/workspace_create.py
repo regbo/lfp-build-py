@@ -38,7 +38,7 @@ if ! git diff --quiet --cached; then
 fi
 """
 
-app = App()
+app = App(help="Create new workspace members or bootstrap a new workspace root project.")
 
 
 @app.command
@@ -61,17 +61,18 @@ def member(
     """
     Create a new member project in the workspace.
 
-    Sets up a pyproject.toml and a standard src/<package>/__init__.py layout.
-    Internal workspace dependencies are automatically synchronized after creation.
+    Sets up a ``pyproject.toml`` and a standard ``src/{package}/__init__.py``
+    layout. Internal workspace dependencies are automatically synchronized
+    after creation.
 
     Parameters
     ----------
     name
         The name of the new project (used for directory and package name).
     path
-        Optional parent directory within the workspace root. Defaults to `packages/`.
+        Parent directory within the workspace root. Defaults to ``packages/``.
     project_dependency
-        List of existing workspace projects to depend on.
+        Existing workspace project names to depend on.
     dependency
         Additional dependency strings to add to the new project's dependencies.
     """

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import pathlib
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -13,11 +12,13 @@ from lfp_logging import logs
 from lfp_build import workspace
 
 """
-File and directory renaming utilities.
+Bulk file and directory renaming utilities.
 
-Provides commands to perform mass rename operations on files and directories,
-including text replacement within files and directory path transformations.
-Supports dry-runs and automatic dash-to-underscore conversions.
+Provides the ``lfp-build rename`` command for mass text replacement inside
+files and renaming of directory names. Operations honor a configurable skip
+list of build/cache directories, are workspace-aware (the active workspace
+itself is never modified), and support a dry-run preview as well as automatic
+dash-to-underscore variant rewrites.
 """
 
 LOG = logs.logger(__name__)
@@ -31,19 +32,46 @@ _SKIP_DIR_NAMES = (
     "cache",
 )
 
-app = cyclopts.App()
+app = cyclopts.App(help="Bulk rename strings inside files and directory names.")
 
 
 @cyclopts.Parameter(name="*")
 @dataclass
 class RenameArgs:
-    transforms: Annotated[list[str], cyclopts.Parameter(name="transform")] = field(
-        default_factory=list
-    )
-    dry_run: bool = False
-    dash_to_underscore: bool = False
+    """
+    Arguments for the ``rename`` command.
+
+    Attributes:
+        transforms: ``old:new`` pairs to substitute inside file contents and
+            directory names. Multiple ``--transform`` flags may be passed.
+        dry_run: When True, log every change that would be made without
+            writing any files or renaming any directories.
+        dash_to_underscore: When True, also apply each transform with dashes
+            replaced by underscores in both the search and replacement
+            strings (for example, ``old-name -> new-name`` also rewrites
+            ``old_name -> new_name``).
+    """
+
+    transforms: Annotated[
+        list[str],
+        cyclopts.Parameter(
+            name="transform",
+            help="One or more old:new substitution pairs.",
+        ),
+    ] = field(default_factory=list)
+    dry_run: Annotated[
+        bool,
+        cyclopts.Parameter(help="Preview changes without writing or renaming."),
+    ] = False
+    dash_to_underscore: Annotated[
+        bool,
+        cyclopts.Parameter(help="Also rewrite underscore variants (old_name -> new_name)."),
+    ] = False
 
     def mapping(self) -> dict[str, str]:
+        """
+        Convert ``transforms`` into a ``{old: new}`` dict, validating syntax.
+        """
         mapping: dict[str, str] = {}
         for transform in self.transforms:
             parts = transform.split(":")
@@ -58,10 +86,21 @@ class RenameArgs:
 def rename(
     rename_args: Annotated[RenameArgs, cyclopts.Parameter(negative_iterable="")] | None,
 ) -> None:
+    """
+    Apply ``old:new`` rewrites across files and directory names.
+
+    Text substitutions are applied inside every readable text file under the
+    current working directory (binary files are skipped automatically), and
+    matching directory names are renamed bottom-up. Hidden directories,
+    underscore-prefixed directories, common build/cache directories, and the
+    enclosing workspace itself are excluded.
+
+    Use ``--dry-run`` to preview changes without writing.
+    """
     if rename_args is None:
         raise ValueError("RenameArgs cannot be None")
-    file_path = pathlib.Path(__file__).parent
-    workspace_root: pathlib.Path | None = workspace.metadata(file_path).workspace_root
+    file_path = Path(__file__).parent
+    workspace_root: Path | None = workspace.metadata(file_path).workspace_root
     LOG.info(f"workspace_root: {workspace_root}")
 
     root = Path(".").resolve()
@@ -137,6 +176,9 @@ def _walk_dirs(root: Path, workspace_root: Path) -> Iterable[Path]:
 
 # noinspection PyBroadException
 def _process_files(root: Path, workspace_root: Path, args: RenameArgs) -> None:
+    """
+    Walk ``root`` and rewrite text file contents using ``args`` substitutions.
+    """
     mappings = args.mapping()
 
     for directory in _walk_dirs(root, workspace_root):
@@ -175,6 +217,12 @@ def _process_files(root: Path, workspace_root: Path, args: RenameArgs) -> None:
 
 
 def _rename_dirs(root: Path, workspace_root: Path, args: RenameArgs) -> None:
+    """
+    Rename directory names under ``root`` using ``args`` substitutions.
+
+    Directories are processed bottom-up so child renames complete before any
+    parent rename relocates them.
+    """
     mappings = args.mapping()
     dirs: list[Path] = []
 

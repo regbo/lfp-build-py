@@ -37,10 +37,10 @@ def dist(
     """
     Build wheel artifacts for workspace projects.
 
-    When `_config.MEMBER_PROJECT_DIRECT_REFERENCE.get()` is True, built wheels
-    are inspected in the temporary output directory and workspace-local
-    `Requires-Dist: ... @ file://...` entries are normalized to plain package
-    requirements before copying artifacts to `out_dir`.
+    When ``LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE=true``, built wheels are
+    inspected in the temporary output directory and workspace-local
+    ``Requires-Dist: name @ file://...`` entries are normalized to plain
+    package requirements before copying artifacts to ``out_dir``.
 
     Parameters
     ----------
@@ -171,6 +171,9 @@ def _normalize_wheel_requires_dist(
     workspace_root: pathlib.Path,
     workspace_member_paths: set[pathlib.Path],
 ) -> None:
+    """
+    Rewrite a single wheel's METADATA in place if it carries workspace file URIs.
+    """
     metadata_member_name = _wheel_metadata_member_name(wheel_path=wheel_path)
     if metadata_member_name is None:
         return
@@ -209,6 +212,9 @@ def _normalize_wheel_requires_dist(
 
 
 def _wheel_metadata_member_name(*, wheel_path: pathlib.Path) -> str | None:
+    """
+    Locate the ``.dist-info/METADATA`` archive member name within a wheel.
+    """
     try:
         with zipfile.ZipFile(wheel_path, "r") as wheel_zip:
             for member_name in wheel_zip.namelist():
@@ -225,6 +231,13 @@ def _strip_workspace_file_uri_from_requirement(
     workspace_root: pathlib.Path,
     workspace_member_paths: set[pathlib.Path],
 ) -> str | None:
+    """
+    Drop a workspace ``file://`` URI from a single ``Requires-Dist`` value.
+
+    Returns the rewritten requirement when the URI resolves to a known
+    workspace member, otherwise None to signal the caller to keep the
+    original line unchanged.
+    """
     match = _REQUIRES_DIST_FILE_RE.match(requirement)
     if match is None:
         return None
@@ -247,6 +260,9 @@ def _strip_workspace_file_uri_from_requirement(
 def _replace_wheel_member(
     *, wheel_path: pathlib.Path, member_name: str, replacement_bytes: bytes
 ) -> None:
+    """
+    Replace a single zip member inside a wheel with new bytes atomically.
+    """
     temp_file_descriptor, temp_file_name = tempfile.mkstemp(
         suffix=".whl",
         prefix=f"{wheel_path.stem}-",

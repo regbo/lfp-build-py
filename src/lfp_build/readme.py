@@ -22,7 +22,7 @@ Supports parallel execution, smart help filtering, and selective updates.
 
 LOG = logs.logger(__name__)
 
-app = App()
+app = App(help="Refresh README command-help sentinel blocks from live --help output.")
 
 # Sentinel regex (generic)
 _CMD_BLOCK_RE = re.compile(

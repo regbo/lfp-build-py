@@ -6,20 +6,20 @@ import os
 import pathlib
 import re
 import subprocess
-from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any
 
+import tomlkit
 from lfp_logging import logs
+from tomlkit import TOMLDocument
 
-import lfp_build
 from lfp_build import _config, util
 
 """
 Interface for uv workspace metadata.
 
-Provides utilities for retrieving and parsing metadata from a uv workspace,
-enabling easy access to the workspace root and its member projects.
+Retrieves and parses metadata from a uv workspace via ``uv workspace
+metadata``, with a best-effort filesystem scan and source repair fallback
+when the uv command fails on a misconfigured workspace.
 """
 
 LOG = logs.logger(__name__)
@@ -125,9 +125,6 @@ def normalize_member_dependency(
             dep_name,
         )
     return dep_name, dep_name
-
-
-
 
 
 def metadata(path: pathlib.Path | None = None) -> Metadata:
@@ -271,16 +268,13 @@ def _metadata_scan(cwd: pathlib.Path) -> Metadata:
 
 def _repair_workspace_sources(metadata_obj: Metadata) -> dict[pathlib.Path, str]:
     """
-    Best-effort repair of missing `tool.uv.sources.<dep>.workspace = true` entries.
+    Best-effort repair of missing ``tool.uv.sources.<dep>.workspace = true`` entries.
 
-    This mirrors the intent of the workspace dependency resolution logic in
-    `workspace_sync` without importing it (to avoid circular imports).
+    Mirrors the intent of the workspace dependency resolution logic in
+    :mod:`lfp_build.workspace_sync` without importing it (to avoid circular
+    imports). Returns a mapping of edited file paths to their original text
+    so that callers can roll back when the repair does not unblock uv.
     """
-    try:
-        import tomlkit
-    except Exception:
-        return {}
-
     direct_reference = _config.MEMBER_PROJECT_DIRECT_REFERENCE.get()
     name_to_dir = {m.name: m.path for m in metadata_obj.members}
     member_names = set(name_to_dir.keys())
@@ -347,10 +341,12 @@ def _find_workspace_root(cwd: pathlib.Path) -> pathlib.Path | None:
 
 
 def _load_toml(path: pathlib.Path) -> dict:
-    try:
-        import tomlkit
-    except Exception:
-        return {}
+    """
+    Load a TOML file as a plain dict, returning ``{}`` on read or parse errors.
+
+    Used by best-effort scanning paths where a missing or malformed
+    ``pyproject.toml`` should not crash workspace discovery.
+    """
     try:
         with path.open("rb") as f:
             doc = tomlkit.load(f)
@@ -359,14 +355,13 @@ def _load_toml(path: pathlib.Path) -> dict:
         return {}
 
 
-def _load_tomlkit(path: pathlib.Path) -> Any:
-    """Load a TOML file as a tomlkit document, preserving formatting and comments.
+def _load_tomlkit(path: pathlib.Path) -> TOMLDocument:
+    """
+    Load a TOML file as a tomlkit document, preserving formatting and comments.
 
     Unlike :func:`_load_toml`, this raises on missing files or parse errors so
     callers performing in-place edits fail fast instead of silently dropping
     user content.
     """
-    import tomlkit
-
     with path.open("rb") as f:
         return tomlkit.load(f)

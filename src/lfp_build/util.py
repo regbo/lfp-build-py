@@ -23,8 +23,8 @@ def process_start(
     stdout_log_level: int | None = None,
     stderr_log_level: int | None = logging.DEBUG,
     check: bool = True,
-    cwd: pathlib.Path = None,
-    env: dict | None = None,
+    cwd: pathlib.Path | None = None,
+    env: dict[str, str] | None = None,
 ) -> Iterator[str]:
     """
     Start a subprocess and yield its stdout line by line.

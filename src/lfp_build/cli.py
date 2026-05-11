@@ -10,11 +10,13 @@ from lfp_build import readme, rename, workspace_create, workspace_dist, workspac
 """
 Main entry point for the lfp-build CLI.
 
-This module aggregates all subcommands from other modules and provides
-a unified interface for workspace management. The CLI provides commands for:
-- Creating new projects
-- Synchronizing project configurations
-- Updating README documentation with command help output
+Aggregates the subcommand groups exposed by the workspace tooling into a
+single Cyclopts app. The CLI provides commands for:
+- ``create``: scaffold new workspace member packages or a workspace root.
+- ``sync``: align ``pyproject.toml`` files across the workspace.
+- ``dist``: build wheel artifacts for workspace projects.
+- ``rename``: bulk rename strings across files and directories.
+- ``readme``: refresh README command-help sentinel blocks.
 """
 
 LOG = logs.logger(__name__)

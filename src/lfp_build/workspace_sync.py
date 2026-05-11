@@ -1,14 +1,14 @@
 import logging
-import os
 import pathlib
 import time
 from collections import defaultdict
-from collections.abc import Collection
+from collections.abc import Collection, Iterable
 from copy import deepcopy
-from typing import Annotated, Any, Iterable
+from typing import Annotated, Any, cast
 
 import cyclopts
 import mergedeep
+import tomlkit
 from cyclopts import App
 from lfp_logging import logs
 
@@ -18,8 +18,9 @@ from lfp_build.pyproject import PyProject, PyProjectTree
 """
 Sync utility for managing multiple pyproject.toml files in a uv workspace.
 
-This module provides tools to synchronize versions, build systems, tool settings,
-and dependencies across the root project and its member projects.
+Synchronizes versions, build systems, shared tool settings, internal member
+dependencies, and uv workspace member path patterns across the root project
+and its member projects.
 """
 
 LOG = logs.logger(__name__)
@@ -61,9 +62,10 @@ def sync(
     member_project_tool
         Sync [tool.member-project] from root project to all member projects.
     member_project_dependencies
-        Sync internal member dependencies and uv workspace sources. Dependency
-        format is controlled by `_config.MEMBER_PROJECT_DIRECT_REFERENCE.get()`
-        (plain names when False, `${PROJECT_ROOT}` file references when True).
+        Sync internal member dependencies and uv workspace sources. Set
+        ``LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE=true`` to write workspace
+        deps as ``name @ file://${PROJECT_ROOT}/...`` references; otherwise
+        plain member names are used.
     member_paths
         Sync member path patterns.
     reorder_pyproject
@@ -222,8 +224,11 @@ def _version_parse(version: Any) -> tuple[int, int, int] | None:
             for idx in range(2):
                 offset_idx = idx + 1
                 if not version_digits[offset_idx]:
-                    version_digits[offset_idx] = 0
-            return tuple(int(digit) for digit in version_digits)
+                    version_digits[offset_idx] = "0"
+            return cast(
+                tuple[int, int, int],
+                tuple(int(digit) for digit in version_digits),
+            )
     return None
 
 
@@ -261,13 +266,16 @@ def sync_member_project_dependencies(
     """
     Synchronize internal workspace dependencies and uv source entries.
 
-    Dependency formatting is controlled by
-    `_config.MEMBER_PROJECT_DIRECT_REFERENCE.get()`:
-    - False: internal dependencies are plain names (for uv workspace resolution)
-    - True: internal dependencies use `file://${PROJECT_ROOT}/...` references
+    Dependency formatting is controlled by the
+    ``LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE`` env var:
 
-    In both modes, `tool.uv.sources.<dep>.workspace = true` is maintained for
-    detected internal member dependencies.
+    - unset / ``false``: internal dependencies are plain names (for uv
+      workspace resolution).
+    - ``true``: internal dependencies are written as
+      ``name @ file://${PROJECT_ROOT}/...`` references.
+
+    In both modes, ``tool.uv.sources.<dep> = { workspace = true }`` is
+    maintained for detected internal member dependencies.
     """
     if unfiltered_pyproject_tree.filtered:
         raise ValueError("Unfiltered workspace tree required for member project dependencies sync")
@@ -316,8 +324,6 @@ def _sync_sources(*, proj: PyProject, member_dependencies: Iterable[str]) -> Non
     Existing workspace source entries for dependencies that are no longer
     present are removed.
     """
-    import tomlkit
-
     member_dependencies = sorted(member_dependencies) if member_dependencies else []
     sources_table_required = bool(member_dependencies)
     source_table = proj.table("tool", "uv", "sources", create=sources_table_required)
@@ -353,6 +359,13 @@ def _sync_sources(*, proj: PyProject, member_dependencies: Iterable[str]) -> Non
 def sync_member_paths(
     unfiltered_pyproject_tree: PyProjectTree,
 ) -> None:
+    """
+    Refresh ``[tool.uv.workspace].members`` patterns on the root project.
+
+    Member directories discovered in the workspace are consolidated into the
+    smallest set of literal paths and ``parent/*`` glob patterns that still
+    match every member while honoring existing exclude patterns.
+    """
     if unfiltered_pyproject_tree.filtered:
         raise ValueError("Unfiltered workspace tree required for member path sync")
     root_proj = unfiltered_pyproject_tree.root
@@ -368,10 +381,11 @@ def sync_member_paths(
         exclude_patterns,
     )
     workspace_table = root_proj.table(*workspace_key_path, create=True)
+    assert workspace_table is not None  # create=True always returns a Table
     members_key = "members"
     if members_key in workspace_table:
         if member_patterns:
-            member_table = workspace_table[members_key]
+            member_table: Any = workspace_table[members_key]
             member_table.clear()
             member_table.extend(member_patterns)
         else:
@@ -381,22 +395,24 @@ def sync_member_paths(
 
 
 def _workspace_member_paths(
-    root: pathlib.Path, paths: list[pathlib.Path], excludes: list[str] | None
+    root: pathlib.Path, paths: Iterable[pathlib.Path], excludes: list[str] | None
 ) -> list[str]:
     """
-    Consolidate project paths into parent wildcards (e.g., 'packages/*') strictly.
+    Consolidate project paths into parent wildcards (e.g., ``packages/*``).
+
+    A parent directory is only collapsed to ``parent/*`` when every non-hidden,
+    non-excluded subdirectory beneath it is part of the input paths. Otherwise
+    member directories are emitted as literal relative paths.
     """
-
     root = root.resolve()
-    paths = {p.resolve() for p in paths if p != root}
+    resolved_paths: set[pathlib.Path] = {p.resolve() for p in paths if p != root}
 
-    if not all(p.is_relative_to(root) for p in paths):
+    if not all(p.is_relative_to(root) for p in resolved_paths):
         raise ValueError("All paths must be under root")
 
-    # Ensure excludes is a list to avoid iteration errors
     excludes = excludes or []
 
-    original_rels = {p.relative_to(root) for p in paths}
+    original_rels = {p.relative_to(root) for p in resolved_paths}
     final_paths = set(original_rels)
 
     by_parent: dict[pathlib.Path, set[pathlib.Path]] = defaultdict(set)
@@ -537,9 +553,3 @@ def _ruff_format(path: pathlib.Path) -> None:
     }
     for arg, options in run_arg_options.items():
         util.process_run("ruff", arg, *options, cwd=path, stdout_log_level=logging.DEBUG)
-
-
-if "__main__" == __name__:
-    print(_version_parse("v1.2.3"))
-    os.chdir("/Users/reggie.pierce/Projects/github-reggie-db/dbx-tools")
-    sync()

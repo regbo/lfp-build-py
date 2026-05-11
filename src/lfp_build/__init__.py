@@ -1,6 +1,7 @@
 """
-lfp-build: Workspace management and code generation utilities.
+lfp-build: Workspace management CLI for multi-project Python repositories.
 
-A comprehensive toolset for managing multi-project Python workspaces with
-automated code generation, configuration synchronization, and build orchestration.
+Helps bootstrap member packages, keep workspace ``pyproject.toml`` files
+aligned, build wheel artifacts, automate README command-help blocks, and
+perform bulk rename operations across files and directories.
 """
