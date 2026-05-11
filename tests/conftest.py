@@ -38,7 +38,7 @@ members = ["packages/*"]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.member-project]
+[tool.lfp-build.member-project]
 dependencies = ["requests"]
 """)
 

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import re
 import shlex
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -7,24 +5,23 @@ from multiprocessing import cpu_count
 from pathlib import Path
 from re import Pattern
 
-from cyclopts import App
+import cyclopts
 from lfp_logging import logs
 
 from lfp_build import util, workspace
 
 """
-README documentation automation utilities.
+Implements ``lfp-build readme`` (currently with a single ``update`` verb).
 
-This module provides commands to automatically update README files by executing
-commands embedded in sentinel blocks and replacing the content with command output.
-Supports parallel execution, smart help filtering, and selective updates.
+Updates README files by executing commands embedded in HTML sentinel blocks
+and replacing the body with the captured output, with parallel execution and
+selective filtering.
 """
 
 LOG = logs.logger(__name__)
 
-app = App(help="Refresh README command-help sentinel blocks from live --help output.")
+app = cyclopts.App(help="README documentation automation.")
 
-# Sentinel regex (generic)
 _CMD_BLOCK_RE = re.compile(
     r"""
     \s*<!--\s*BEGIN:cmd\s+(?P<cmd>[^>]+?)\s*-->\s*
@@ -34,12 +31,11 @@ _CMD_BLOCK_RE = re.compile(
     re.DOTALL | re.VERBOSE,
 )
 
-
 _CODE_BLOCK_RE = re.compile(r"^([`~]{3,}).*?^\1", re.MULTILINE | re.DOTALL)
 
 
 @app.command()
-def update_cmd(
+def update(
     *,
     readme: Path = Path("README.md"),
     write: bool = True,
@@ -49,7 +45,7 @@ def update_cmd(
     """
     Update README command sentinel blocks.
 
-    Only blocks whose command matches --filter are executed and updated.
+    Only blocks whose command matches ``--filter`` are executed and updated.
 
     Parameters
     ----------
@@ -111,13 +107,12 @@ def update_cmd(
             output_map[cmd] = output
 
     def _replace(match: re.Match) -> str:
-        """Replace sentinel block content with executed command output."""
         if is_in_code_block(match.start()):
             return match.group(0)
 
         cmd = match.group("cmd")
         if cmd not in output_map:
-            return match.group(0)  # untouched
+            return match.group(0)
         return f"\n\n<!-- BEGIN:cmd {cmd} -->\n{output_map[cmd]}\n<!-- END:cmd -->\n\n"
 
     updated = _CMD_BLOCK_RE.sub(_replace, content)
@@ -136,27 +131,12 @@ def update_cmd(
 
 def _run_cmd(cmd: str) -> tuple[str, str]:
     """
-    Execute command and capture output in markdown code block format.
+    Execute ``cmd`` and return ``(cmd, formatted_output)``.
 
-    For commands with --help, filters out the --help option row from
-    output and removes empty Options sections.
-
-    Args:
-        cmd: Shell command to execute
-
-    Returns:
-        Tuple of (command, formatted_output) where formatted_output
-        is wrapped in markdown code block
+    The captured stdout is wrapped in a fenced shell code block so it can
+    drop directly into the README body.
     """
     args = shlex.split(cmd)
     LOG.debug("Running cmd block - args:%s", args)
     stdout = util.process_run(args[0], *args[1:])
     return cmd, f"```shell\n{stdout.strip()}\n```"
-
-
-def main() -> None:
-    app()
-
-
-if __name__ == "__main__":
-    main()

@@ -5,7 +5,7 @@ def _run_cli(tokens: list[str]) -> int:
     """
     Run the Cyclopts app and return its exit code.
 
-    Cyclopts exits via SystemExit after handling a command.
+    Cyclopts apps exit via SystemExit after handling a command.
     """
     try:
         cli.app(tokens)
@@ -15,8 +15,7 @@ def _run_cli(tokens: list[str]) -> int:
 
 
 def test_cli_help() -> None:
-    """Test CLI help output."""
-    # Cyclopts apps are just callables. We can capture stdout.
+    """Test CLI help output exposes the new top-level commands."""
     import io
     from contextlib import redirect_stdout
 
@@ -24,13 +23,17 @@ def test_cli_help() -> None:
     with redirect_stdout(f):
         _run_cli(["--help"])
     output = f.getvalue()
+    assert "init" in output
+    assert "add" in output
     assert "sync" in output
-    assert "create" in output
+    assert "build" in output
+    assert "hooks" in output
     assert "readme" in output
+    assert "rename" in output
 
 
-def test_readme_update_cmd(temp_workspace) -> None:
-    """Test updating command blocks in README."""
+def test_readme_update(temp_workspace) -> None:
+    """Test updating command blocks in README via `readme update`."""
     readme_path = temp_workspace / "README.md"
     message = "hello-from-test"
     sentinel_begin = f"<!-- BEGIN:cmd echo '{message}' -->"
@@ -43,25 +46,22 @@ def test_readme_update_cmd(temp_workspace) -> None:
     assert content.count(sentinel_begin) == 1
     assert content.count(message) == 1
 
-    # The readme logic is in a subcommand
-    assert _run_cli(["readme", "update-cmd", "--readme", str(readme_path)]) == 0
+    assert _run_cli(["readme", "update", "--readme", str(readme_path)]) == 0
 
     updated_content = readme_path.read_text()
     assert updated_content.count(sentinel_begin) == 1
     assert updated_content.count(message) == 2
 
 
-def test_cli_create_and_sync(temp_workspace) -> None:
-    """Test create and sync via CLI."""
-    # Create a project
-    assert _run_cli(["create", "cli-pkg"]) == 0
+def test_cli_add_and_sync(temp_workspace) -> None:
+    """Test add and sync via CLI."""
+    assert _run_cli(["add", "cli-pkg"]) == 0
     assert (temp_workspace / "packages" / "cli-pkg").exists()
 
-    # Sync
     assert _run_cli(["sync"]) == 0
 
 
-def test_cli_create_project_dependency_short_flag(temp_workspace) -> None:
-    """Ensure -pd works and is not confused with -p."""
-    assert _run_cli(["create", "core"]) == 0
-    assert _run_cli(["create", "api", "-pd", "core"]) == 0
+def test_cli_add_project_dependency_short_flag(temp_workspace) -> None:
+    """Ensure --project-dependency works and is not confused with --path."""
+    assert _run_cli(["add", "core"]) == 0
+    assert _run_cli(["add", "api", "--project-dependency", "core"]) == 0

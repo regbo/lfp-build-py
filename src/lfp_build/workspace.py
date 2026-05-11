@@ -24,7 +24,18 @@ when the uv command fails on a misconfigured workspace.
 
 LOG = logs.logger(__name__)
 
-_DEP_NAME_RE = re.compile(r"^\s*([\w\-\.\[\]]+)\s*@\s*file://")
+# PEP 508 ``name @ file://uri[; marker]`` requirement parser. Captures the
+# distribution name (with optional ``[extras]``), the ``file://`` URI, and
+# any environment marker. Used by both dependency-name extraction and
+# wheel METADATA rewriting.
+_FILE_REQUIREMENT_RE = re.compile(
+    r"^\s*"
+    r"(?P<name>[A-Za-z0-9][A-Za-z0-9._\-]*(?:\[[^\]]+\])?)"
+    r"\s*@\s*"
+    r"(?P<uri>file://\S+)"
+    r"(?:\s*;\s*(?P<marker>.+?))?"
+    r"\s*$"
+)
 
 
 @dataclass
@@ -47,6 +58,62 @@ class MetadataMember:
     path: pathlib.Path
 
 
+@dataclass
+class FileRequirement:
+    """
+    Parsed PEP 508 ``name @ file://uri[; marker]`` requirement.
+
+    Returned by :func:`parse_file_requirement` when a dependency string is
+    in the file-URI form. ``name`` includes any ``[extras]`` suffix; the
+    URI is left unparsed so callers can decide how to resolve it (relative
+    to a workspace root, with ``${PROJECT_ROOT}`` substitution, etc.).
+    """
+
+    name: str
+    uri: str
+    marker: str | None = None
+
+
+def parse_file_requirement(requirement: str) -> FileRequirement | None:
+    """
+    Parse a ``name @ file://uri[; marker]`` requirement.
+
+    Returns ``None`` when the input is not in this form (e.g. a plain
+    ``"foo"`` or a versioned ``"foo>=1.0"`` requirement). Callers that
+    only need the name should use :func:`parse_dependency_name`, which
+    falls back to the stripped input when the file-URI form does not
+    match.
+    """
+    match = _FILE_REQUIREMENT_RE.match(requirement)
+    if match is None:
+        return None
+    return FileRequirement(
+        name=match.group("name"),
+        uri=match.group("uri"),
+        marker=match.group("marker"),
+    )
+
+
+def parse_dependency_file_requirement(requirement: str) -> FileRequirement | None:
+    """
+    Parse a ``name @ file://uri[; marker]`` requirement.
+
+    Returns ``None`` when the input is not in this form (e.g. a plain
+    ``"foo"`` or a versioned ``"foo>=1.0"`` requirement). Callers that
+    only need the name should use :func:`parse_dependency_name`, which
+    falls back to the stripped input when the file-URI form does not
+    match.
+    """
+    match = _FILE_REQUIREMENT_RE.match(requirement)
+    if match is None:
+        return None
+    return FileRequirement(
+        name=match.group("name"),
+        uri=match.group("uri"),
+        marker=match.group("marker"),
+    )
+
+
 def parse_dependency_name(dep: str) -> str:
     """
     Extract the project name from a dependency string.
@@ -54,9 +121,10 @@ def parse_dependency_name(dep: str) -> str:
     Supports entries like:
     - "foo"
     - "foo @ file://..."
+    - "foo[extras] @ file://..."
     """
-    m = _DEP_NAME_RE.match(dep)
-    return m.group(1) if m else dep.strip()
+    file_requirement = parse_dependency_file_requirement(dep)
+    return file_requirement.name if file_requirement else dep.strip()
 
 
 def member_dependency(

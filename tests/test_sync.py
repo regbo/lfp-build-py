@@ -1,12 +1,14 @@
 import pathlib
 
-from lfp_build import _config, pyproject, workspace_create, workspace_sync
+from lfp_build import _config, pyproject, version
+from lfp_build.commands import add as add_cmd
+from lfp_build.commands import sync as sync_cmd
 
 
-def test_workspace_create_project(temp_workspace) -> None:
+def test_workspace_add_member(temp_workspace) -> None:
     """Test creating a new member project."""
     project_name = "new-pkg"
-    workspace_create.member(project_name, path=pathlib.Path("packages"))
+    add_cmd.add(project_name, path=pathlib.Path("packages"))
 
     expected_path = temp_workspace / "packages" / project_name
     assert expected_path.exists()
@@ -16,7 +18,6 @@ def test_workspace_create_project(temp_workspace) -> None:
 
 def test_workspace_sync(temp_workspace) -> None:
     """Test synchronization of build system and versions."""
-    # Create a member project manually
     pkg_dir = temp_workspace / "packages" / "pkg1"
     pkg_dir.mkdir(parents=True)
     (pkg_dir / _config.PYPROJECT_FILE_NAME).write_text("""
@@ -25,15 +26,12 @@ name = "pkg1"
 version = "0.0.0"
 """)
 
-    # Run sync
-    workspace_sync.sync()
+    sync_cmd.sync()
 
-    # Check if build-system was synced from root
     pkg_proj = pyproject.PyProject(pkg_dir / _config.PYPROJECT_FILE_NAME)
     assert "build-system" in pkg_proj.data
     assert pkg_proj.data["build-system"]["build-backend"] == "hatchling.build"
 
-    # Check if version was synced to a normalized semver-based value.
     assert pkg_proj.data["project"]["version"].startswith("0.")
 
 
@@ -50,13 +48,11 @@ version = "0.0.0"
 """
     )
 
-    # Run in a directory with no .git
     monkeypatch.chdir(proj_dir)
 
     proj = pyproject.PyProject(pyproject_path)
-    workspace_sync.sync_version([proj], version=None)
+    sync_cmd.sync_version([proj], version=None)
 
-    # Should keep existing version without raising when git metadata is unavailable.
     assert proj.data["project"]["version"] == "0.0.0"
 
 
@@ -85,11 +81,11 @@ version = "0.0.0"
     )
 
     monkeypatch.setenv("LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE", "0")
-    workspace_sync.sync(
+    sync_cmd.sync(
         format_python=False,
         version=False,
         build_system=False,
-        member_project_tool=False,
+        member_project=False,
         member_paths=False,
     )
 
@@ -123,11 +119,11 @@ version = "0.0.0"
     )
 
     monkeypatch.setenv("LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE", "1")
-    workspace_sync.sync(
+    sync_cmd.sync(
         format_python=False,
         version=False,
         build_system=False,
-        member_project_tool=False,
+        member_project=False,
         member_paths=False,
     )
 
@@ -137,24 +133,24 @@ version = "0.0.0"
 
 
 def test_version_parse_single_part_pads_to_three_parts() -> None:
-    assert workspace_sync._version_parse("1") == (1, 0, 0)
+    assert version._parse("1") == (1, 0, 0)
 
 
 def test_version_parse_two_parts_pads_patch() -> None:
-    assert workspace_sync._version_parse("1.2") == (1, 2, 0)
+    assert version._parse("1.2") == (1, 2, 0)
 
 
 def test_version_parse_three_parts_is_preserved() -> None:
-    assert workspace_sync._version_parse("1.2.3") == (1, 2, 3)
+    assert version._parse("1.2.3") == (1, 2, 3)
 
 
 def test_version_parse_handles_common_version_prefixes_and_suffixes() -> None:
-    assert workspace_sync._version_parse("v1.2.3") == (1, 2, 3)
-    assert workspace_sync._version_parse("1.2.3+rev7") == (1, 2, 3)
-    assert workspace_sync._version_parse("1.2.3-dev.4") == (1, 2, 3)
+    assert version._parse("v1.2.3") == (1, 2, 3)
+    assert version._parse("1.2.3+rev7") == (1, 2, 3)
+    assert version._parse("1.2.3-dev.4") == (1, 2, 3)
 
 
 def test_version_parse_invalid_values_return_none() -> None:
-    assert workspace_sync._version_parse(None) is None
-    assert workspace_sync._version_parse("") is None
-    assert workspace_sync._version_parse("abc") is None
+    assert version._parse(None) is None
+    assert version._parse("") is None
+    assert version._parse("abc") is None

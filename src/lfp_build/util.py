@@ -2,7 +2,7 @@ import logging
 import pathlib
 import subprocess
 import threading
-from collections.abc import Collection, Iterator
+from collections.abc import Iterator
 from typing import IO, Any, AnyStr
 
 from lfp_logging import logs
@@ -15,9 +15,6 @@ the workspace management CLI.
 """
 
 LOG = logs.logger(__name__)
-
-
-
 
 
 def process_start(
@@ -66,6 +63,8 @@ def process_start(
     def _read_stream(stream: IO[AnyStr] | None) -> Iterator[str]:
         if stream is not None:
             for line in stream:
+                if isinstance(line, bytes):
+                    line = line.decode()
                 if line:
                     yield line[:-1]
 

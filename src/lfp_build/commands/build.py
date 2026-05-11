@@ -6,41 +6,34 @@ import tempfile
 import urllib.parse
 import zipfile
 
-from cyclopts import App
 from lfp_logging import logs
 
 from lfp_build import _config, util, workspace
 
 """
-Build distribution artifacts for each project in a uv workspace.
+Implements ``lfp-build build``.
 
-This module exposes the `lfp-build dist` command, which iterates workspace
-members and runs `uv build --wheel` in each project directory.
+Iterates uv workspace members and runs ``uv build --wheel`` in each project
+directory. When ``LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE=true``, built
+wheel metadata is post-processed so workspace-local ``Requires-Dist:
+name @ file://...`` entries are rewritten to plain package names before
+artifacts are copied into the destination directory.
 """
 
 LOG = logs.logger(__name__)
-app = App()
+
 _WHEEL_NAME_RE = re.compile(
     r"^(?P<dist>[^-]+)-(?P<version>[^-]+)(?:-[^-]+)?-[^-]+-[^-]+-[^-]+\.whl$"
 )
-_REQUIRES_DIST_FILE_RE = re.compile(
-    r"^(?P<name>[A-Za-z0-9][A-Za-z0-9._-]*(?:\[[^\]]+\])?)\s*@\s*(?P<uri>file://\S+)(?:\s*;\s*(?P<marker>.+))?$"
-)
 
 
-@app.default
-def dist(
+def build(
     *,
     name: list[str] | None = None,
     out_dir: pathlib.Path = pathlib.Path("./dist"),
 ) -> None:
     """
     Build wheel artifacts for workspace projects.
-
-    When ``LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE=true``, built wheels are
-    inspected in the temporary output directory and workspace-local
-    ``Requires-Dist: name @ file://...`` entries are normalized to plain
-    package requirements before copying artifacts to ``out_dir``.
 
     Parameters
     ----------
@@ -154,8 +147,8 @@ def _normalize_wheel_metadata_for_workspace_paths(
     """
     Rewrite wheel METADATA entries that point to local workspace projects.
 
-    For `Requires-Dist` entries in `name @ file://...` form, replace them with
-    `name` when the file URI resolves to a path for a workspace member.
+    For ``Requires-Dist`` entries in ``name @ file://...`` form, replace them with
+    ``name`` when the file URI resolves to a path for a workspace member.
     """
     for wheel_path in wheel_dir.glob("*.whl"):
         _normalize_wheel_requires_dist(
@@ -238,13 +231,10 @@ def _strip_workspace_file_uri_from_requirement(
     workspace member, otherwise None to signal the caller to keep the
     original line unchanged.
     """
-    match = _REQUIRES_DIST_FILE_RE.match(requirement)
-    if match is None:
+    parsed = workspace.parse_file_requirement(requirement)
+    if parsed is None:
         return None
-    requirement_name = match.group("name")
-    marker = match.group("marker")
-    uri = match.group("uri")
-    parsed_uri = urllib.parse.urlparse(uri)
+    parsed_uri = urllib.parse.urlparse(parsed.uri)
     if parsed_uri.scheme != "file":
         return None
     local_path = pathlib.Path(urllib.parse.unquote(parsed_uri.path)).resolve(strict=False)
@@ -252,9 +242,9 @@ def _strip_workspace_file_uri_from_requirement(
         return None
     if local_path not in workspace_member_paths:
         return None
-    if marker:
-        return f"{requirement_name}; {marker}"
-    return requirement_name
+    if parsed.marker:
+        return f"{parsed.name}; {parsed.marker}"
+    return parsed.name
 
 
 def _replace_wheel_member(

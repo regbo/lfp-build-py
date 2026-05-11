@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import os
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -12,13 +10,12 @@ from lfp_logging import logs
 from lfp_build import workspace
 
 """
-Bulk file and directory renaming utilities.
+Implements ``lfp-build rename``.
 
-Provides the ``lfp-build rename`` command for mass text replacement inside
-files and renaming of directory names. Operations honor a configurable skip
-list of build/cache directories, are workspace-aware (the active workspace
-itself is never modified), and support a dry-run preview as well as automatic
-dash-to-underscore variant rewrites.
+Bulk text replacement inside files and directory renaming. Operations honor a
+configurable skip list of build/cache directories, are workspace-aware (the
+active workspace itself is never modified), and support a dry-run preview as
+well as automatic dash-to-underscore variant rewrites.
 """
 
 LOG = logs.logger(__name__)
@@ -81,7 +78,6 @@ class RenameArgs:
         return mapping
 
 
-# noinspection PyBroadException
 @app.default()
 def rename(
     rename_args: Annotated[RenameArgs, cyclopts.Parameter(negative_iterable="")] | None,
@@ -109,7 +105,6 @@ def rename(
     _rename_dirs(root=root, workspace_root=workspace_root, args=rename_args)
 
 
-# noinspection PyBroadException
 def _is_binary(path: Path, chunk_size: int = 8192) -> bool:
     """
     Determine if a file is binary by checking for null bytes in its first chunk.
@@ -174,7 +169,6 @@ def _walk_dirs(root: Path, workspace_root: Path) -> Iterable[Path]:
         yield current
 
 
-# noinspection PyBroadException
 def _process_files(root: Path, workspace_root: Path, args: RenameArgs) -> None:
     """
     Walk ``root`` and rewrite text file contents using ``args`` substitutions.
@@ -250,7 +244,3 @@ def _rename_dirs(root: Path, workspace_root: Path, args: RenameArgs) -> None:
                         directory.rename(new_path)
                     except FileNotFoundError:
                         pass
-
-
-if __name__ == "__main__":
-    app()

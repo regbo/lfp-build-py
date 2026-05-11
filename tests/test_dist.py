@@ -4,10 +4,11 @@ from typing import NoReturn
 
 import pytest
 
-from lfp_build import workspace, workspace_dist
+from lfp_build import workspace
+from lfp_build.commands import build as build_cmd
 
 
-def test_dist_builds_all_workspace_members(monkeypatch, tmp_path) -> None:
+def test_build_builds_all_workspace_members(monkeypatch, tmp_path) -> None:
     root = tmp_path / "root"
     pkg = tmp_path / "pkg"
     root.mkdir()
@@ -21,7 +22,7 @@ def test_dist_builds_all_workspace_members(monkeypatch, tmp_path) -> None:
         ],
     )
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(workspace_dist.workspace, "metadata", lambda: metadata)
+    monkeypatch.setattr(build_cmd.workspace, "metadata", lambda: metadata)
 
     calls: list[tuple[tuple, dict]] = []
 
@@ -34,9 +35,9 @@ def test_dist_builds_all_workspace_members(monkeypatch, tmp_path) -> None:
         (temp_out_dir / wheel_name).write_text("wheel")
         return ""
 
-    monkeypatch.setattr(workspace_dist.util, "process_run", _process_run)
+    monkeypatch.setattr(build_cmd.util, "process_run", _process_run)
 
-    workspace_dist.dist()
+    build_cmd.build()
 
     assert len(calls) == 2
     assert calls[0][0][:4] == ("uv", "build", "--wheel", "--out-dir")
@@ -47,7 +48,7 @@ def test_dist_builds_all_workspace_members(monkeypatch, tmp_path) -> None:
     assert (tmp_path / "dist" / "pkg-0.0.1-py3-none-any.whl").is_file()
 
 
-def test_dist_fails_on_unknown_member_name(monkeypatch, tmp_path) -> None:
+def test_build_fails_on_unknown_member_name(monkeypatch, tmp_path) -> None:
     root = tmp_path / "root"
     root.mkdir()
 
@@ -55,13 +56,13 @@ def test_dist_fails_on_unknown_member_name(monkeypatch, tmp_path) -> None:
         workspace_root=root,
         members=[workspace.MetadataMember(name="root", path=root)],
     )
-    monkeypatch.setattr(workspace_dist.workspace, "metadata", lambda: metadata)
+    monkeypatch.setattr(build_cmd.workspace, "metadata", lambda: metadata)
 
     with pytest.raises(ValueError, match="not found"):
-        workspace_dist.dist(name=["missing"])
+        build_cmd.build(name=["missing"])
 
 
-def test_dist_writes_to_custom_out_dir_and_overwrites(monkeypatch, tmp_path) -> None:
+def test_build_writes_to_custom_out_dir_and_overwrites(monkeypatch, tmp_path) -> None:
     project = tmp_path / "project"
     project.mkdir()
     out_dir = tmp_path / ".example"
@@ -74,7 +75,7 @@ def test_dist_writes_to_custom_out_dir_and_overwrites(monkeypatch, tmp_path) -> 
         workspace_root=project,
         members=[workspace.MetadataMember(name="project", path=project)],
     )
-    monkeypatch.setattr(workspace_dist.workspace, "metadata", lambda: metadata)
+    monkeypatch.setattr(build_cmd.workspace, "metadata", lambda: metadata)
 
     def _process_run(*args, **kwargs) -> str:
         out_index = args.index("--out-dir")
@@ -83,15 +84,15 @@ def test_dist_writes_to_custom_out_dir_and_overwrites(monkeypatch, tmp_path) -> 
         (temp_out_dir / new_wheel_name).write_text("new")
         return ""
 
-    monkeypatch.setattr(workspace_dist.util, "process_run", _process_run)
+    monkeypatch.setattr(build_cmd.util, "process_run", _process_run)
 
-    workspace_dist.dist(out_dir=out_dir)
+    build_cmd.build(out_dir=out_dir)
 
     assert not existing_wheel.exists()
     assert (out_dir / new_wheel_name).read_text() == "new"
 
 
-def test_dist_rewrites_workspace_file_uri_requires_dist(monkeypatch, tmp_path) -> None:
+def test_build_rewrites_workspace_file_uri_requires_dist(monkeypatch, tmp_path) -> None:
     workspace_root = tmp_path / "workspace"
     dashboard = workspace_root / "dashboard"
     common = workspace_root / "packages" / "common"
@@ -106,7 +107,7 @@ def test_dist_rewrites_workspace_file_uri_requires_dist(monkeypatch, tmp_path) -
         ],
     )
     monkeypatch.setenv("LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE", "1")
-    monkeypatch.setattr(workspace_dist.workspace, "metadata", lambda: metadata)
+    monkeypatch.setattr(build_cmd.workspace, "metadata", lambda: metadata)
 
     wheel_name = "dashboard-0.0.1-py3-none-any.whl"
 
@@ -127,10 +128,10 @@ def test_dist_rewrites_workspace_file_uri_requires_dist(monkeypatch, tmp_path) -
             )
         return ""
 
-    monkeypatch.setattr(workspace_dist.util, "process_run", _process_run)
+    monkeypatch.setattr(build_cmd.util, "process_run", _process_run)
 
     out_dir = tmp_path / "dist"
-    workspace_dist.dist(out_dir=out_dir)
+    build_cmd.build(out_dir=out_dir)
 
     with zipfile.ZipFile(out_dir / wheel_name, "r") as wheel_zip:
         metadata_text = wheel_zip.read("dashboard-0.0.1.dist-info/METADATA").decode("utf-8")
@@ -138,7 +139,7 @@ def test_dist_rewrites_workspace_file_uri_requires_dist(monkeypatch, tmp_path) -
     assert "Requires-Dist: common\n" in metadata_text
 
 
-def test_dist_keeps_non_workspace_file_uri_requires_dist(monkeypatch, tmp_path) -> None:
+def test_build_keeps_non_workspace_file_uri_requires_dist(monkeypatch, tmp_path) -> None:
     workspace_root = tmp_path / "workspace"
     dashboard = workspace_root / "dashboard"
     dashboard.mkdir(parents=True)
@@ -150,7 +151,7 @@ def test_dist_keeps_non_workspace_file_uri_requires_dist(monkeypatch, tmp_path) 
         members=[workspace.MetadataMember(name="dashboard", path=dashboard)],
     )
     monkeypatch.setenv("LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE", "1")
-    monkeypatch.setattr(workspace_dist.workspace, "metadata", lambda: metadata)
+    monkeypatch.setattr(build_cmd.workspace, "metadata", lambda: metadata)
 
     wheel_name = "dashboard-0.0.1-py3-none-any.whl"
 
@@ -171,17 +172,17 @@ def test_dist_keeps_non_workspace_file_uri_requires_dist(monkeypatch, tmp_path) 
             )
         return ""
 
-    monkeypatch.setattr(workspace_dist.util, "process_run", _process_run)
+    monkeypatch.setattr(build_cmd.util, "process_run", _process_run)
 
     out_dir = tmp_path / "dist"
-    workspace_dist.dist(out_dir=out_dir)
+    build_cmd.build(out_dir=out_dir)
 
     with zipfile.ZipFile(out_dir / wheel_name, "r") as wheel_zip:
         metadata_text = wheel_zip.read("dashboard-0.0.1.dist-info/METADATA").decode("utf-8")
     assert f"Requires-Dist: common @ file://{external_common}\n" in metadata_text
 
 
-def test_dist_skips_wheel_metadata_rewrite_when_direct_reference_off(monkeypatch, tmp_path) -> None:
+def test_build_skips_metadata_rewrite_when_direct_reference_off(monkeypatch, tmp_path) -> None:
     workspace_root = tmp_path / "workspace"
     dashboard = workspace_root / "dashboard"
     dashboard.mkdir(parents=True)
@@ -190,13 +191,13 @@ def test_dist_skips_wheel_metadata_rewrite_when_direct_reference_off(monkeypatch
         members=[workspace.MetadataMember(name="dashboard", path=dashboard)],
     )
     monkeypatch.delenv("LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE", raising=False)
-    monkeypatch.setattr(workspace_dist.workspace, "metadata", lambda: metadata)
+    monkeypatch.setattr(build_cmd.workspace, "metadata", lambda: metadata)
 
     def _normalize_wheels(**kwargs) -> NoReturn:
         raise AssertionError("wheel metadata rewrite should be skipped when disabled")
 
     monkeypatch.setattr(
-        workspace_dist,
+        build_cmd,
         "_normalize_wheel_metadata_for_workspace_paths",
         _normalize_wheels,
     )
@@ -210,6 +211,6 @@ def test_dist_skips_wheel_metadata_rewrite_when_direct_reference_off(monkeypatch
         (temp_out_dir / wheel_name).write_text("wheel")
         return ""
 
-    monkeypatch.setattr(workspace_dist.util, "process_run", _process_run)
+    monkeypatch.setattr(build_cmd.util, "process_run", _process_run)
 
-    workspace_dist.dist(out_dir=tmp_path / "dist")
+    build_cmd.build(out_dir=tmp_path / "dist")

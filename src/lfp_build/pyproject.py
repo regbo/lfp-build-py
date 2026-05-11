@@ -200,6 +200,65 @@ class PyProjectTree:
         return pyproject_tree_copy
 
 
+def reorder_document(tree: PyProjectTree) -> None:
+    """
+    Sort top-level keys of every project's pyproject.toml into a stable order.
+
+    The convention is:
+    1. ``[build-system]``
+    2. ``[project]``
+    3. ``[project.*]`` tables
+    4. ``[dependency-groups]``
+    5. Everything else (``[tool.*]``, etc.)
+    """
+    for proj in tree.projects():
+        _reorder_document(proj)
+
+
+def _reorder_document(proj: PyProject) -> None:
+    """
+    Reorder the top-level keys of a single ``PyProject`` document in place.
+    """
+    data: TOMLDocument = proj.data
+    items = list(data.items())
+
+    build_system: list = []
+    project: list = []
+    project_children: list = []
+    dependency_groups: list = []
+    rest: list = []
+
+    for key, value in items:
+        if key == "build-system":
+            build_system.append((key, value))
+        elif key == "project":
+            project.append((key, value))
+        elif key.startswith("project."):
+            project_children.append((key, value))
+        elif key == "dependency-groups":
+            dependency_groups.append((key, value))
+        else:
+            rest.append((key, value))
+
+    groups = [
+        build_system,
+        project,
+        project_children,
+        dependency_groups,
+        rest,
+    ]
+
+    data.clear()
+
+    for group in groups:
+        if not group:
+            continue
+        for k, v in group:
+            data.add(k, v)
+
+    print(data)
+
+
 def tree(metadata: workspace.Metadata | None = None) -> PyProjectTree:
     """
     Discover and load all projects within a uv workspace into a tree.
@@ -420,8 +479,8 @@ def _normalize_line_endings(path: pathlib.Path) -> None:
     """
     Normalize a TOML file to LF newlines.
 
-    Pixi's parser can fail on some Windows CRLF outputs for pyproject.toml.
-    Normalizing here makes persisted files consistently parseable.
+    Some downstream TOML parsers can fail on Windows CRLF output. Normalizing
+    here makes persisted files consistently parseable across platforms.
     """
     contents = path.read_bytes()
     normalized_contents = contents.replace(b"\r\n", b"\n").replace(b"\r", b"\n")

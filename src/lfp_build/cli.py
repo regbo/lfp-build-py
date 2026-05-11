@@ -5,18 +5,22 @@ from typing import Annotated
 import cyclopts
 from lfp_logging import logs
 
-from lfp_build import readme, rename, workspace_create, workspace_dist, workspace_sync
+from lfp_build.commands import add, build, hooks, init, readme, rename, sync
 
 """
-Main entry point for the lfp-build CLI.
+Top-level entry point for the ``lfp-build`` CLI.
 
-Aggregates the subcommand groups exposed by the workspace tooling into a
-single Cyclopts app. The CLI provides commands for:
-- ``create``: scaffold new workspace member packages or a workspace root.
+The shape mirrors uv: flat top-level verbs for the common workflow, with a
+small subcommand group only where one is justified (``readme``).
+
+Commands:
+- ``init NAME``: bootstrap a new uv workspace and seed ``packages/common``.
+- ``add NAME``: add a new member project to the current workspace.
 - ``sync``: align ``pyproject.toml`` files across the workspace.
-- ``dist``: build wheel artifacts for workspace projects.
+- ``build``: build wheel artifacts for workspace projects.
+- ``hooks``: install or refresh the lfp-build managed git pre-commit hook.
 - ``rename``: bulk rename strings across files and directories.
-- ``readme``: refresh README command-help sentinel blocks.
+- ``readme update``: refresh README command-help sentinel blocks.
 """
 
 LOG = logs.logger(__name__)
@@ -30,15 +34,12 @@ def launcher(
     working_directory: pathlib.Path | None = None,
 ) -> int:
     """
-    Main entry point for the lfp-build CLI.
-
-    This function exists to support a global working directory option and then
-    forward all remaining tokens to the Cyclopts app.
+    Top-level launcher with a global ``--working-directory`` option.
 
     Parameters
     ----------
     working_directory
-        Set the current working directory.
+        Set the current working directory before dispatching to a subcommand.
     """
     if working_directory:
         working_directory = working_directory.resolve()
@@ -48,11 +49,13 @@ def launcher(
     return app(tokens)
 
 
-app.command(workspace_create.app, name="create")
-app.command(workspace_dist.app, name="dist")
-app.command(workspace_sync.app, name="sync")
-app.command(readme.app, name="readme")
+app.command(init.init, name="init")
+app.command(add.add, name="add")
+app.command(sync.sync, name="sync")
+app.command(build.build, name="build")
+app.command(hooks.hooks, name="hooks")
 app.command(rename.app, name="rename")
+app.command(readme.app, name="readme")
 
 
 def main() -> None:

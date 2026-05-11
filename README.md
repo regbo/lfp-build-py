@@ -55,8 +55,11 @@ Then invoke it through `uv run`:
 # Sync configurations
 uv run lfp-build sync
 
-# Create new projects
-uv run lfp-build create new-service
+# Initialize a new workspace
+uv run lfp-build init new-service
+
+# Add a member to the current workspace
+uv run lfp-build add my-package
 ```
 
 ### For lfp-build Development
@@ -70,55 +73,103 @@ pip install -e .
 
 ## Commands
 
-### Create
+The CLI follows a uv-style flat verb shape. Top-level verbs cover the common
+workflow (`init`, `sync`, `build`, `add`, `hooks`, `rename`), with a single
+subcommand group for `readme`.
 
-<!-- BEGIN:cmd lfp-build create --help -->
+### Init
+
+<!-- BEGIN:cmd lfp-build init --help -->
 ```shell
-Usage: lfp-build create COMMAND
+Usage: lfp-build init [OPTIONS] NAME
 
-Create new workspace members or bootstrap a new workspace root project.
+Initialize a new workspace root project.                                        
 
-╭─ Commands ───────────────────────────────────────────────────────────────────╮
-│ member   Create a new member project in the workspace.                       │
-│ project  Create a new workspace root project.                                │
-╰──────────────────────────────────────────────────────────────────────────────╯
+Writes a minimal root pyproject.toml from the bundled template and creates a    
+common member package under packages/.
+
 ╭─ Parameters ─────────────────────────────────────────────────────────────────╮
-│ --working-directory  Set the current working directory.                      │
+│    --working-directory  Set the current working directory before dispatching │
+│                         to a subcommand.                                     │
+│ *  NAME --name          Name of the new workspace. Used as the project       │
+│                         directory name. [required]                           │
+│    --path -p            Parent directory to create the workspace in.         │
+│                         [default: .]                                         │
+│    --dependency -d      Additional dependency strings to add to the common   │
+│                         member package.                                      │
+│    --force -f           If True, remove an existing target directory before  │
+│                         creating the project. [default: False]               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 <!-- END:cmd -->
 
-```bash
-# Create a new member package under packages/
-uv run lfp-build create member my-project
+Bootstraps a new uv workspace: writes a minimal root `pyproject.toml`
+from a bundled template, copies a local `.gitignore` template, and seeds
+a `packages/common` member project. Also installs the lfp-build managed
+`.githooks/pre-commit` block (the same logic exposed by `lfp-build hooks`)
+so that `lfp-build sync` runs before each commit.
 
-# Create a member with dependencies on other workspace projects
-uv run lfp-build create member my-api \
+```bash
+# Bootstrap a new workspace at ./agent-demo
+uv run lfp-build init agent-demo
+
+# Bootstrap with extra dependencies pre-wired into packages/common
+uv run lfp-build init agent-demo --dependency requests --dependency pydantic
+
+# Overwrite an existing target directory
+uv run lfp-build init agent-demo --force
+```
+
+### Add
+
+<!-- BEGIN:cmd lfp-build add --help -->
+```shell
+Usage: lfp-build add [OPTIONS] NAME
+
+Add a new member project to the workspace.                                      
+
+Sets up a pyproject.toml and a standard src/<package>/__init__.py layout.       
+Internal workspace dependencies are automatically synchronized after creation.
+
+╭─ Parameters ─────────────────────────────────────────────────────────────────╮
+│    --working-directory      Set the current working directory before         │
+│                             dispatching to a subcommand.                     │
+│ *  NAME --name              The name of the new project (used for directory  │
+│                             and package name). [required]                    │
+│    --path -p                Optional parent directory within the workspace   │
+│                             root. Defaults to packages/. [default: packages] │
+│    --project-dependency -c  List of existing workspace projects to depend    │
+│                             on.                                              │
+│    --dependency -d          Additional dependency strings to add to the new  │
+│                             project's project.dependencies array.            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+<!-- END:cmd -->
+
+Adds a new member project to the current workspace. Sets up a
+`pyproject.toml` and a standard `src/<package_name>/__init__.py` layout, then
+runs a workspace sync so the member is wired into `[tool.uv.workspace]`
+immediately.
+
+```bash
+# Add a member package under packages/
+uv run lfp-build add my-project
+
+# Add a member with dependencies on other workspace projects
+uv run lfp-build add my-api \
   --project-dependency my-core \
   --project-dependency my-models
 
-# Create in a specific subdirectory within the workspace
-uv run lfp-build create member my-project --path services
-
-# Bootstrap a new workspace root project (writes root pyproject.toml and creates packages/common)
-uv run lfp-build create project agent-demo
+# Add in a specific subdirectory within the workspace
+uv run lfp-build add my-project --path services
 ```
 
-Member projects include:
+Created members include:
 
 - Standard Python src layout (`src/<package_name>/`)
-- Configured `pyproject.toml` with optional dependencies
-- An empty `__init__.py` for the package
+- A `pyproject.toml` seeded with optional dependencies
+- An empty `__init__.py`
 - Automatic workspace dependency wiring via `lfp-build sync`
-
-#### Create member vs create project
-
-- `lfp-build create member` creates a new member package under the workspace.
-- `lfp-build create project` bootstraps a new workspace root project with:
-  - a minimal root `pyproject.toml` configured for uv and pixi
-  - `packages/common` created as an initial member
-  - a copied local `.gitignore` template (cwd, parent, then repo fallback) if the target project does not already have one
-  - a `.githooks/pre-commit` script that runs `lfp-build sync` before each commit
 
 ### Sync
 
@@ -132,28 +183,29 @@ This command performs several synchronization tasks to keep member projects
 aligned with the root project settings and ensure consistent dependencies.
 
 ╭─ Parameters ─────────────────────────────────────────────────────────────────╮
-│ --working-directory           Set the current working directory.             │
-│ --name                        Specific member project names to sync.         │
-│ --version                     Sync version from git history to all member    │
-│                               projects. [default: True]                      │
-│ --build-system                Sync [build-system] from root project to all   │
-│                               member projects. [default: True]               │
-│ --member-project-tool         Sync [tool.member-project] from root project   │
-│                               to all member projects. [default: True]        │
-│ --member-project-dependencie  Sync internal member dependencies and uv       │
-│   s                           workspace sources. Set                         │
-│                               LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE=true │
-│                               to write workspace deps as name @              │
-│                               file://${PROJECT_ROOT}/... references;         │
-│                               otherwise plain member names are used.         │
-│                               [default: True]                                │
-│ --member-paths                Sync member path patterns. [default: True]     │
-│ --reorder-pyproject           Order pyproject entries where applicable.      │
-│                               [default: True]                                │
-│ --format-pyproject            Format pyproject.toml files using taplo.       │
-│                               [default: True]                                │
-│ --format-python               Run ruff format and check on all projects.     │
-│                               [default: True]                                │
+│ --working-directory  Set the current working directory before dispatching to │
+│                      a subcommand.                                           │
+│ --name               Specific member project names to sync.                  │
+│ --version            Sync version from git history to all member projects.   │
+│                      [default: True]                                         │
+│ --build-system       Sync [build-system] from root project to all member     │
+│                      projects. [default: True]                               │
+│ --member-project     Sync [tool.lfp-build.member-project] from root project  │
+│                      to all member projects. [default: True]                 │
+│ --sources            Sync [tool.uv.sources] on both the root project and     │
+│                      every member project, and normalize internal member     │
+│                      dependency entries. Set                                 │
+│                      LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE=true to write │
+│                      workspace deps as name @ file://${PROJECT_ROOT}/...     │
+│                      references; otherwise plain member names are used.      │
+│                      [default: True]                                         │
+│ --member-paths       Sync member path patterns. [default: True]              │
+│ --reorder-pyproject  Order pyproject entries where applicable. [default:     │
+│                      True]                                                   │
+│ --format-pyproject   Format pyproject.toml files using taplo. [default:      │
+│                      True]                                                   │
+│ --format-python      Run ruff format and check on all projects. [default:    │
+│                      True]                                                   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 <!-- END:cmd -->
@@ -169,21 +221,17 @@ uv run lfp-build sync --name project1 --name project2
 uv run lfp-build sync --no-version --no-format-python
 ```
 
-### Dist
+### Build
 
-<!-- BEGIN:cmd lfp-build dist --help -->
+<!-- BEGIN:cmd lfp-build build --help -->
 ```shell
-Usage: lfp-build dist [OPTIONS]
+Usage: lfp-build build [OPTIONS]
 
-Build wheel artifacts for workspace projects.                                   
-
-When LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE=true, built wheels are inspected 
-in the temporary output directory and workspace-local Requires-Dist: name @     
-file://... entries are normalized to plain package requirements before copying  
-artifacts to out_dir.
+Build wheel artifacts for workspace projects.
 
 ╭─ Parameters ─────────────────────────────────────────────────────────────────╮
-│ --working-directory  Set the current working directory.                      │
+│ --working-directory  Set the current working directory before dispatching to │
+│                      a subcommand.                                           │
 │ --name               Optional member project names to build. If omitted, all │
 │                      workspace projects from metadata are built in metadata  │
 │                      order.                                                  │
@@ -197,11 +245,48 @@ artifacts to out_dir.
 
 ```bash
 # Build wheel artifacts for every workspace project
-uv run lfp-build dist
+uv run lfp-build build
 
 # Build wheel artifacts for selected projects
-uv run lfp-build dist --name common --name api
+uv run lfp-build build --name common --name api
 ```
+
+### Hooks
+
+<!-- BEGIN:cmd lfp-build hooks --help -->
+```shell
+Usage: lfp-build hooks
+
+Install or refresh the lfp-build managed pre-commit hook.                       
+
+Discovers the workspace root via uv metadata, initializes a git repository there
+if one does not already exist, configures git to use .githooks as               
+core.hooksPath, and writes (or refreshes) the lfp-build managed block in        
+.githooks/pre-commit. Hook content outside the managed markers is left          
+untouched.
+
+╭─ Parameters ─────────────────────────────────────────────────────────────────╮
+│ --working-directory  Set the current working directory before dispatching to │
+│                      a subcommand.                                           │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+<!-- END:cmd -->
+
+Install or refresh the lfp-build managed git pre-commit hook. The hook
+runs `lfp-build sync` before each commit and stages any `pyproject.toml`
+updates the sync produces. The managed portion of the hook is delimited by
+`# >>> lfp-build managed pre-commit >>>` / `# <<< lfp-build managed
+pre-commit <<<` markers, so re-running the command updates that block in
+place without overwriting any user-added hook content.
+
+```bash
+# Install or refresh the managed pre-commit hook
+uv run lfp-build hooks
+```
+
+`lfp-build init` already runs this on workspace bootstrap; use `lfp-build
+hooks` directly to (re)install the hook into an existing workspace, refresh
+a stale managed block, or after manually editing `.githooks/pre-commit`.
 
 ### Rename
 
@@ -212,7 +297,8 @@ Usage: lfp-build rename [ARGS]
 Bulk rename strings inside files and directory names.
 
 ╭─ Parameters ─────────────────────────────────────────────────────────────────╮
-│ --working-directory     Set the current working directory.                   │
+│ --working-directory     Set the current working directory before dispatching │
+│                         to a subcommand.                                     │
 │ TRANSFORM --transform   One or more old:new substitution pairs. [default:    │
 │                         []]                                                  │
 │ DRY-RUN --dry-run       Preview changes without writing or renaming.         │
@@ -234,48 +320,51 @@ uv run lfp-build rename old-name:new-name --dry-run
 uv run lfp-build rename old-name:new-name --dash-to-underscore
 ```
 
-### README
+### Readme
 
 <!-- BEGIN:cmd lfp-build readme --help -->
 ```shell
 Usage: lfp-build readme COMMAND
 
-Refresh README command-help sentinel blocks from live --help output.
+README documentation automation.
 
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
-│ update-cmd  Update README command sentinel blocks.                           │
+│ update  Update README command sentinel blocks.                               │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Parameters ─────────────────────────────────────────────────────────────────╮
-│ --working-directory  Set the current working directory.                      │
+│ --working-directory  Set the current working directory before dispatching to │
+│                      a subcommand.                                           │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 <!-- END:cmd -->
 
-Automatically update README.md files by executing help commands embedded in sentinel blocks.
+Automatically update README.md files by executing commands embedded in
+sentinel blocks and replacing the body with the captured output.
 
 ```bash
 # Update all command blocks in README
-uv run lfp-build readme update-cmd
+uv run lfp-build readme update
 
 # Specify a different README file
-uv run lfp-build readme update-cmd --readme docs/CLI.md
+uv run lfp-build readme update --readme docs/CLI.md
 
 # Only update specific commands (filter by regex)
-uv run lfp-build readme update-cmd --filter "sync"
+uv run lfp-build readme update --filter "sync"
 
 # Preview changes without writing
-uv run lfp-build readme update-cmd --write false
+uv run lfp-build readme update --write false
 
 # Control parallelism
-uv run lfp-build readme update-cmd --jobs 4
+uv run lfp-build readme update --jobs 4
 ```
 
-> **Note**: This README's command documentation was automatically generated using `lfp-build readme`,
-> which executes commands and embeds their help output into sentinel blocks.
+> **Note**: This README's command documentation is automatically generated by
+> `lfp-build readme update`, which executes commands and embeds their help
+> output into sentinel blocks.
 
 #### How It Works
 
-The `readme update-cmd` command looks for sentinel blocks in your README:
+The `readme update` command looks for sentinel blocks in your README:
 
 ```markdown
 <!-- BEGIN:cmd lfp-build sync --help -->
@@ -342,7 +431,7 @@ requires = ["uv_build>=0.9.6,<0.10.0"]
 build-backend = "uv_build"
 
 # This section will be synced to all member projects
-[tool.member-project]
+[tool.lfp-build.member-project]
 # Shared configuration for all projects
 ```
 
@@ -367,50 +456,105 @@ uv run lfp-build sync
 
 ## Module Reference
 
+The package layout mirrors the CLI tree: each top-level command lives in its
+own module under `commands/`, with shared logic at the package root.
+
+```
+src/lfp_build/
+├── cli.py               # Cyclopts entry point; mounts each command
+├── _config.py           # dotenv loader + runtime flag config
+├── workspace.py         # uv workspace metadata + path consolidation
+├── pyproject.py         # pyproject.toml read/write/order/format
+├── version.py           # git-derived semver helpers
+├── util.py              # subprocess helpers
+├── commands/
+│   ├── init.py          # `lfp-build init`
+│   ├── add.py           # `lfp-build add`
+│   ├── sync.py          # `lfp-build sync`
+│   ├── build.py         # `lfp-build build`
+│   ├── hooks.py         # `lfp-build hooks`
+│   ├── rename.py        # `lfp-build rename`
+│   └── readme.py        # `lfp-build readme update`
+└── templates/
+    └── init_pyproject.toml  # bundled root pyproject.toml template
+```
+
 ### cli.py
 
-Top-level Cyclopts entry point that wires together every subcommand group.
+Top-level Cyclopts entry point. Imports each command from `commands/` and
+mounts it as a flat verb. No business logic.
 
 ### _config.py
 
 Environment configuration loader. Auto-runs at interpreter startup via
 `sitecustomize-entrypoints` to load a dotenv file and resolve runtime flags.
 
-### util.py
-
-Subprocess helpers used across the CLI for logging child stdout/stderr.
-
-### pyproject.py
-
-Read, update, order, and format `pyproject.toml` files via tomlkit, with
-optional taplo/tombi formatting.
-
 ### workspace.py
 
 Retrieve uv workspace metadata with a filesystem-scan fallback and a
 best-effort source repair pass when uv reports a misconfigured workspace.
 
-### workspace_create.py
+### pyproject.py
 
-Scaffold new workspace member projects and bootstrap a workspace root.
+Read, update, reorder, and format `pyproject.toml` files via tomlkit, with
+optional taplo/tombi formatting.
 
-### workspace_sync.py
+### version.py
 
-Core synchronization logic for versions, build systems, member settings, uv
-workspace member path patterns, and internal workspace dependencies.
+Derive a normalized `major.minor.patch` semver string with optional
+`+devN` / `+revN` suffix from `git describe` output and the working-tree
+state. Used by `commands.sync` to refresh `project.version` on every
+member during sync.
 
-### workspace_dist.py
+### util.py
+
+Subprocess helpers used across the CLI for logging child stdout/stderr.
+
+### commands/init.py
+
+Bootstrap a new uv workspace: write the root `pyproject.toml` from the
+bundled template at `lfp_build/templates/init_pyproject.toml`, copy a
+local `.gitignore` template, install the managed pre-commit hook via
+`commands.hooks.install`, and seed `packages/common`.
+
+### commands/add.py
+
+Add a new member project to the current workspace. Sets up the directory,
+seeds `pyproject.toml`, creates the `src/<package>/__init__.py`, then runs
+`commands.sync.sync` so the new member is wired in. Hook bootstrap is
+intentionally not part of `add` - use `init` (for new workspaces) or
+`hooks` (to install/refresh the hook on an existing workspace).
+
+### commands/hooks.py
+
+Install or refresh the lfp-build managed git pre-commit hook. Manages a
+marker-delimited block in `.githooks/pre-commit` so re-running the install
+logic is idempotent and preserves any user-added hook content outside the
+markers. The CLI verb (`lfp-build hooks`) calls `install`, and
+`commands.init` reuses the same `install` function during workspace
+bootstrap.
+
+### commands/sync.py
+
+Core synchronization driver and step implementations: versions, build
+system, member tool config, member dependencies, uv workspace member path
+patterns, ruff format, and pyproject reorder/format.
+
+### commands/build.py
 
 Build wheel distribution artifacts for workspace projects, with optional
-``Requires-Dist`` rewriting for workspace-local file URIs.
+`Requires-Dist` rewriting for workspace-local file URIs.
 
-### readme.py
+### commands/rename.py
 
-Automated README documentation updater using command output sentinels.
+Bulk file-content and directory rename utilities, workspace-aware so the
+enclosing tooling workspace itself is never modified.
 
-### rename.py
+### commands/readme.py
 
-Bulk file-content and directory rename utilities.
+README documentation automation. Currently exposes a single `update` verb
+that re-runs `BEGIN:cmd ... END:cmd` sentinel commands and embeds their
+output back into the markdown.
 
 ## Development
 
@@ -455,9 +599,12 @@ The tool is designed to be extended for your specific needs:
 
 The modular architecture makes it easy to add new commands for your specific needs:
 
-1. Create a new module in `src/lfp_build/`
-2. Define a Cyclopts app with your commands
-3. Add it to `cli.py` to integrate with the CLI
+1. Create a new module in `src/lfp_build/commands/` (one file per top-level
+   verb).
+2. Either expose a plain function (for leaf verbs like `init`, `sync`, etc.)
+   or a `cyclopts.App` (when the command owns its own subcommand group, as
+   `readme` does).
+3. Mount it in `cli.py` via `app.command(my_module.handler, name="...")`.
 
 ## Real-World Examples
 

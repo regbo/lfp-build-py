@@ -6,7 +6,7 @@ uv = "latest"
 run = "uv run ruff check . --fix --unsafe-fixes && uv run ruff format ."
 
 [tasks.publish]
-description = "Stage changes, bump version, push tags. Mirrors the pixi publish task."
+description = "Stage changes, bump version, push tags."
 depends = ["ruff-fix"]
 usage = '''
 arg "<version_part>" default="patch" help="Version part to bump" {

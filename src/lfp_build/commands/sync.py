@@ -1,22 +1,21 @@
 import logging
 import pathlib
-import time
 from collections import defaultdict
 from collections.abc import Collection, Iterable
 from copy import deepcopy
-from typing import Annotated, Any, cast
+from typing import Annotated, Any
 
 import cyclopts
 import mergedeep
 import tomlkit
-from cyclopts import App
 from lfp_logging import logs
 
 from lfp_build import _config, pyproject, util, workspace
 from lfp_build.pyproject import PyProject, PyProjectTree
+from lfp_build.version import derive as _derive_version
 
 """
-Sync utility for managing multiple pyproject.toml files in a uv workspace.
+Implements ``lfp-build sync``.
 
 Synchronizes versions, build systems, shared tool settings, internal member
 dependencies, and uv workspace member path patterns across the root project
@@ -25,17 +24,14 @@ and its member projects.
 
 LOG = logs.logger(__name__)
 
-app = App()
 
-
-@app.default
 def sync(
     *,
     name: list[str] | None = None,
     version: bool = True,
     build_system: bool = True,
-    member_project_tool: bool = True,
-    member_project_dependencies: bool = True,
+    member_project: bool = True,
+    sources: bool = True,
     member_paths: bool = True,
     reorder_pyproject: bool = True,
     format_pyproject: bool = True,
@@ -59,13 +55,14 @@ def sync(
         Sync version from git history to all member projects.
     build_system
         Sync [build-system] from root project to all member projects.
-    member_project_tool
-        Sync [tool.member-project] from root project to all member projects.
-    member_project_dependencies
-        Sync internal member dependencies and uv workspace sources. Set
-        ``LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE=true`` to write workspace
-        deps as ``name @ file://${PROJECT_ROOT}/...`` references; otherwise
-        plain member names are used.
+    member_project
+        Sync [tool.lfp-build.member-project] from root project to all member projects.
+    sources
+        Sync ``[tool.uv.sources]`` on both the root project and every
+        member project, and normalize internal member dependency entries.
+        Set ``LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE=true`` to write
+        workspace deps as ``name @ file://${PROJECT_ROOT}/...`` references;
+        otherwise plain member names are used.
     member_paths
         Sync member path patterns.
     reorder_pyproject
@@ -87,14 +84,14 @@ def sync(
         sync_version(pyproject_tree.projects())
     if build_system:
         sync_build_system(pyproject_tree)
-    if member_project_tool:
-        sync_member_project_tool(pyproject_tree)
-    if member_project_dependencies:
-        sync_member_project_dependencies(unfiltered_pyproject_tree, pyproject_tree)
+    if member_project:
+        sync_member_project(pyproject_tree)
+    if sources:
+        sync_sources(unfiltered_pyproject_tree, pyproject_tree)
     if member_paths:
         sync_member_paths(unfiltered_pyproject_tree)
     if reorder_pyproject:
-        sync_pyproject_order(pyproject_tree)
+        pyproject.reorder_document(pyproject_tree)
     if format_python:
         ruff_format(pyproject_tree.projects())
     for proj_name, proj in {
@@ -124,7 +121,7 @@ def sync_version(projs: Collection[PyProject], version: str | None = None) -> No
             key = "version"
             current_version = project_data.get(key, None)
             if not version:
-                version = _version(current_version)
+                version = _derive_version(current_version)
 
             if current_version == version:
                 continue
@@ -136,105 +133,6 @@ def sync_version(projs: Collection[PyProject], version: str | None = None) -> No
                 version,
                 current_version,
             )
-
-
-def _version(current_version: str | None = None) -> str:
-    version = _version_parse(current_version)
-    git_version, git_commit_count = _version_git()
-    max_version = max((v for v in (version, git_version) if v is not None), default=(0, 0, 1))
-    if not git_commit_count:
-        git_rev, git_modified = _version_git_rev()
-        if not git_modified:
-            rev = ""
-        else:
-            rev = f"rev{git_rev}" if git_rev else f"ts{int(time.time())}"
-    else:
-        rev = f"dev{git_commit_count}"
-    if rev:
-        rev = f"+{rev}"
-    return f"{_version_format(max_version)}{rev}"
-
-
-def _version_git() -> tuple[tuple[int, int, int] | None, int | None]:
-    try:
-        describe = util.process_run(
-            "git",
-            "describe",
-            "--tags",
-            "--long",
-            "--abbrev=7",
-            check=False,
-            stderr_log_level=None,
-        ).strip()
-        if describe:
-            if version := _version_parse(describe):
-                _, count, _ = describe.rsplit("-", 2)
-                if count:
-                    return version, int(count)
-                else:
-                    return version, None
-    except Exception:
-        pass
-    return None, None
-
-
-def _version_git_rev() -> tuple[str | None, bool]:
-    modified = False
-    try:
-        for _ in util.process_start(
-            "git",
-            "status",
-            "--porcelain",
-            check=False,
-            stderr_log_level=None,
-        ):
-            modified = True
-            break
-    except OSError:
-        # git not installed or not runnable
-        return None, False
-
-    head_arg = "HEAD" if modified else "HEAD~1"
-
-    try:
-        rev = util.process_run(
-            "git",
-            "rev-parse",
-            "--short",
-            head_arg,
-            check=False,
-            stderr_log_level=None,
-        )
-    except OSError:
-        return None, False
-    return rev.strip() or None, modified
-
-
-def _version_parse(version: Any) -> tuple[int, int, int] | None:
-    if version:
-        version_parts = str(version).strip().split(".", 4)[:3]
-        version_digits = ["", "", ""]
-        for idx, part in enumerate(version_parts):
-            for char in part:
-                if char.isdigit():
-                    version_digits[idx] += char
-                elif version_digits[idx]:
-                    break
-        if version_digits[0]:
-            for idx in range(2):
-                offset_idx = idx + 1
-                if not version_digits[offset_idx]:
-                    version_digits[offset_idx] = "0"
-            return cast(
-                tuple[int, int, int],
-                tuple(int(digit) for digit in version_digits),
-            )
-    return None
-
-
-def _version_format(version: tuple[int, int, int]) -> str:
-    major, minor, patch = version
-    return f"{major}.{minor}.{patch}"
 
 
 def sync_build_system(pyproject_tree: PyProjectTree) -> None:
@@ -249,24 +147,30 @@ def sync_build_system(pyproject_tree: PyProjectTree) -> None:
             member.data[key] = deepcopy(data)
 
 
-def sync_member_project_tool(pyproject_tree: PyProjectTree) -> None:
+def sync_member_project(pyproject_tree: PyProjectTree) -> None:
     """
-    Merge the [tool.member-project] configuration from root to all member projects.
+    Merge the [tool.lfp-build.member-project] configuration from root to all member projects.
     """
-    member_project_data = pyproject_tree.root.data.get("tool", {}).get("member-project", {})
+    member_project_data = (
+        pyproject_tree.root.data.get("tool", {}).get("lfp-build", {}).get("member-project", {})
+    )
     LOG.debug("Member project data: %s", member_project_data)
     if member_project_data:
         for member in pyproject_tree.members.values():
             mergedeep.merge(member.data, member_project_data)
 
 
-def sync_member_project_dependencies(
-    unfiltered_pyproject_tree: PyProjectTree, pyproject_tree: PyProjectTree
-) -> None:
+def sync_sources(unfiltered_pyproject_tree: PyProjectTree, pyproject_tree: PyProjectTree) -> None:
     """
-    Synchronize internal workspace dependencies and uv source entries.
+    Synchronize ``[tool.uv.sources]`` on the root project and all members.
 
-    Dependency formatting is controlled by the
+    For the root project, every workspace member is registered as a
+    ``workspace = true`` source. For each member project, internal
+    dependency entries (``project.dependencies``) are normalized and the
+    member's own ``[tool.uv.sources]`` table is rewritten so it lists only
+    the internal members the project actually depends on.
+
+    Dependency formatting on member projects is controlled by the
     ``LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE`` env var:
 
     - unset / ``false``: internal dependencies are plain names (for uv
@@ -278,51 +182,25 @@ def sync_member_project_dependencies(
     maintained for detected internal member dependencies.
     """
     if unfiltered_pyproject_tree.filtered:
-        raise ValueError("Unfiltered workspace tree required for member project dependencies sync")
+        raise ValueError("Unfiltered workspace tree required for sources sync")
     member_names = unfiltered_pyproject_tree.members.keys()
     _sync_sources(proj=pyproject_tree.root, member_dependencies=member_names)
 
     for proj in pyproject_tree.members.values():
-        _sync_member_project_dependencies(unfiltered_pyproject_tree, proj)
-
-
-def _sync_member_project_dependencies(pyproject_tree: PyProjectTree, proj: PyProject) -> None:
-    """
-    Internal helper to synchronize dependencies and uv sources for a specific project.
-    """
-    direct_reference = _config.MEMBER_PROJECT_DIRECT_REFERENCE.get()
-    member_paths_by_name = {
-        pyproject_tree.name: pyproject_tree.root.path.parent,
-        **{name: member.path.parent for name, member in pyproject_tree.members.items()},
-    }
-    member_dependencies: list[str] = []
-    dependencies = proj.data.get("project", {}).get("dependencies", [])
-    if dependencies:
-        for idx, dependency in enumerate(dependencies):
-            normalized_dep, member_dependency_name = workspace.normalize_member_dependency(
-                dependency=str(dependency),
-                member_proj_dir=proj.path.parent,
-                member_paths_by_name=member_paths_by_name,
-                direct_reference=direct_reference,
-            )
-            if member_dependency_name is None:
-                continue
-            dependencies[idx] = normalized_dep
-            member_dependencies.append(member_dependency_name)
-
-    _sync_sources(proj=proj, member_dependencies=member_dependencies)
+        _sync_member_sources(unfiltered_pyproject_tree, proj)
 
 
 def _sync_sources(*, proj: PyProject, member_dependencies: Iterable[str]) -> None:
     """
-    Ensure `tool.uv.sources.<dep>.workspace = true` for active member deps.
+    Rewrite ``[tool.uv.sources]`` for ``proj`` to match ``member_dependencies``.
 
     Each entry is written as an inline table so it renders as
-    `dep = { workspace = true }` under a single `[tool.uv.sources]` header,
-    rather than as a separate `[tool.uv.sources.<dep>]` sub-table.
+    ``dep = { workspace = true }`` under a single ``[tool.uv.sources]``
+    header rather than as a separate ``[tool.uv.sources.<dep>]`` sub-table.
 
     Existing workspace source entries for dependencies that are no longer
-    present are removed.
+    present are removed. When ``member_dependencies`` is empty, the entire
+    ``sources`` table is removed.
     """
     member_dependencies = sorted(member_dependencies) if member_dependencies else []
     sources_table_required = bool(member_dependencies)
@@ -356,6 +234,38 @@ def _sync_sources(*, proj: PyProject, member_dependencies: Iterable[str]) -> Non
             source_table[member_dependency_name] = inline_value
 
 
+def _sync_member_sources(pyproject_tree: PyProjectTree, proj: PyProject) -> None:
+    """
+    Sync ``[tool.uv.sources]`` for a single member project.
+
+    Normalizes ``project.dependencies`` entries that point at other
+    workspace members (per ``LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE``)
+    and then delegates the sources-table write to :func:`_sync_sources`
+    with only the internal members this project actually depends on.
+    """
+    direct_reference = _config.MEMBER_PROJECT_DIRECT_REFERENCE.get()
+    member_paths_by_name = {
+        pyproject_tree.name: pyproject_tree.root.path.parent,
+        **{name: member.path.parent for name, member in pyproject_tree.members.items()},
+    }
+    member_dependencies: list[str] = []
+    dependencies = proj.data.get("project", {}).get("dependencies", [])
+    if dependencies:
+        for idx, dependency in enumerate(dependencies):
+            normalized_dep, member_dependency_name = workspace.normalize_member_dependency(
+                dependency=str(dependency),
+                member_proj_dir=proj.path.parent,
+                member_paths_by_name=member_paths_by_name,
+                direct_reference=direct_reference,
+            )
+            if member_dependency_name is None:
+                continue
+            dependencies[idx] = normalized_dep
+            member_dependencies.append(member_dependency_name)
+
+    _sync_sources(proj=proj, member_dependencies=member_dependencies)
+
+
 def sync_member_paths(
     unfiltered_pyproject_tree: PyProjectTree,
 ) -> None:
@@ -381,7 +291,7 @@ def sync_member_paths(
         exclude_patterns,
     )
     workspace_table = root_proj.table(*workspace_key_path, create=True)
-    assert workspace_table is not None  # create=True always returns a Table
+    assert workspace_table is not None
     members_key = "members"
     if members_key in workspace_table:
         if member_patterns:
@@ -477,61 +387,6 @@ def _workspace_member_paths(
             results.append(f"{p.as_posix()}/*")
 
     return results
-
-
-def sync_pyproject_order(
-    pyproject_tree: PyProjectTree,
-) -> None:
-    """
-    Sort top-level keys in pyproject.toml files to ensure consistency.
-
-    The ordering follows a standard convention:
-    1. [build-system]
-    2. [project]
-    3. [project.*] tables
-    4. [dependency-groups]
-    5. All other tables (tool.*, etc.)
-    """
-
-    def _order(proj: PyProject) -> PyProject:
-        data = proj.data  # tomlkit document
-
-        items = list(data.items())
-
-        build_system = []
-        project = []
-        project_children = []
-        dependency_groups = []
-        rest = []
-
-        for key, value in items:
-            if key == "build-system":
-                build_system.append((key, value))
-            elif key == "project":
-                project.append((key, value))
-            elif key.startswith("project."):
-                project_children.append((key, value))
-            elif key == "dependency-groups":
-                dependency_groups.append((key, value))
-            else:
-                rest.append((key, value))
-
-        data.clear()
-
-        for group in (
-            build_system,
-            project,
-            project_children,
-            dependency_groups,
-            rest,
-        ):
-            for k, v in group:
-                data.add(k, v)
-
-        return proj
-
-    for proj in pyproject_tree.projects():
-        _order(proj)
 
 
 def ruff_format(projs: list[PyProject]) -> None:
