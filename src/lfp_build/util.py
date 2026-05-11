@@ -2,7 +2,7 @@ import logging
 import pathlib
 import subprocess
 import threading
-from collections.abc import Iterator
+from collections.abc import Collection, Iterator
 from typing import IO, Any, AnyStr
 
 from lfp_logging import logs
@@ -10,10 +10,14 @@ from lfp_logging import logs
 """
 Common utilities for the lfp-build package.
 
-Provides subprocess management tools used across the workspace management CLI.
+Provides subprocess management tools and small predicate helpers used across
+the workspace management CLI.
 """
 
 LOG = logs.logger(__name__)
+
+
+
 
 
 def process_start(

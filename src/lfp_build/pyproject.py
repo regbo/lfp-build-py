@@ -7,7 +7,7 @@ import os
 import pathlib
 import shutil
 import subprocess
-from collections.abc import Collection, Mapping
+from collections.abc import Collection, Mapping, MutableMapping
 from dataclasses import dataclass, field
 from tempfile import NamedTemporaryFile
 from typing import Any
@@ -232,19 +232,22 @@ def _prune(data: Any) -> None:
     partially populated or cleared configuration sections.
     """
 
+    def _is_collection(value: Any) -> bool:
+        return not isinstance(value, (str, bytes, bytearray)) and isinstance(value, Collection)
+
     def _is_empty(d: Any) -> bool:
-        if not isinstance(d, str) and isinstance(d, (Collection, Mapping)):
+        if isinstance(d, Mapping) or _is_collection(d):
             return len(d) == 0
         else:
             return False
 
-    if isinstance(data, Mapping):
+    if isinstance(data, MutableMapping):
         for k in list(data.keys()):
             v = data[k]
             _prune(v)
             if _is_empty(v):
                 del data[k]
-    elif not isinstance(data, str) and isinstance(data, Collection):
+    elif _is_collection(data):
         for i in range(len(data) - 1, -1, -1):
             v = data[i]
             _prune(v)
