@@ -1,0 +1,24 @@
+[tools]
+uv = "latest"
+
+[tasks.ruff-fix]
+description = "Run ruff auto-fix and format across the tree."
+run = "uv run ruff check . --fix --unsafe-fixes && uv run ruff format ."
+
+[tasks.publish]
+description = "Stage changes, bump version, tag, and push to origin."
+depends = ["ruff-fix"]
+usage = '''
+arg "<version_part>" default="patch" help="SemVer segment to bump" {
+  choices "patch" "minor" "major"
+}
+flag "-m --message <message>" default="incrementing version to {new_version}" help="Commit / tag message template forwarded to bump-my-version"
+'''
+run = '''
+git add .
+if ! git diff --staged --quiet; then
+  git commit -m "pre-release: staging changes"
+fi
+uv run bump-my-version bump "{{ usage.version_part }}" --message "{{ usage.message }}"
+git push origin HEAD --tags
+'''

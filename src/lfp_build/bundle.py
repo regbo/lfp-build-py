@@ -17,18 +17,14 @@ that ``lfp-build`` bundles for consumers - agent-facing content that
 teaches Claude / Cursor / Codex how to work inside a workspace that uses
 lfp-build.
 
-The bundled content lives inside the package at
-``src/lfp_build/docs/`` (a flat layout: skill subdirectories with
-``SKILL.md`` and standalone ``*.md`` reference docs) so ``uv_build``
-picks it up in both the wheel and the sdist, and
+The bundled content is the source of truth and lives inside the package
+at ``src/lfp_build/docs/`` (a flat layout: skill subdirectories with
+``SKILL.md`` and standalone ``*.md`` reference docs). The tree is
+tracked in git so every install path - PyPI wheel, ``pip install
+git+...``, editable install from a source checkout - carries the
+bundle. ``uv_build`` picks it up in both the wheel and the sdist, and
 ``importlib.resources`` can locate it at runtime regardless of whether
 lfp-build is running from a wheel install or a source checkout.
-
-The authored source of truth lives outside the package tree at
-``<workspace-root>/ai/{skills,docs}/`` and is mirrored into
-``src/lfp_build/docs/`` by the ``lfp-build-publish stage-docs`` command
-before ``uv build`` runs. The staged tree is gitignored (except its
-``__init__.py``); this module reads it, but never writes to it.
 
 The install-side verbs (``lfp-build skills install``,
 ``lfp-build docs install``) share a single implementation in
@@ -51,9 +47,7 @@ Traversable = importlib.abc.Traversable
 #
 # The bundle uses a **flat** layout at runtime: subdirectories that
 # contain a ``SKILL.md`` are skills, and top-level ``*.md`` files are
-# reference docs. The ``lfp-build-publish`` workspace member is
-# responsible for populating this directory from the canonical
-# ``ai/`` source at the repo root prior to ``uv build``.
+# reference docs.
 _BUNDLED_SUBPACKAGE = "docs"
 _BUNDLED_PACKAGE = f"{__package__}.{_BUNDLED_SUBPACKAGE}"
 

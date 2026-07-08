@@ -22,6 +22,7 @@ uv run ruff format .                    # apply formatting
 uv run ruff check src/lfp_build/...     # lint a touched file (scope it)
 uv run lfp-build sync                   # exercise the tool against this repo
 uv run lfp-build readme update          # refresh README sentinel blocks
+mise run publish                        # ruff-fix + commit + bump + push tags
 ```
 
 The full pytest suite must pass with no `--deselect` flags. `temp_workspace`
@@ -40,58 +41,46 @@ short:
 - `src/lfp_build/{workspace,pyproject,version,names,util,_config,_hooks (merged into commands/hooks.py)}.py` - shared primitives.
 - `src/lfp_build/templates/` - bundled resource files (loaded via
  `importlib.resources`, included in wheel + sdist).
-- `src/lfp_build/docs/` - **generated** agent-facing bundle
+- `src/lfp_build/docs/` - **tracked** agent-facing bundle
  (`<name>/SKILL.md` for skills, `<name>.md` for reference docs) that
  ships in the wheel and powers `lfp-build skills install` /
- `lfp-build docs install`. Only `__init__.py` is tracked; every other
- entry is gitignored and rebuilt by `lfp-build-publish stage-docs`.
-- `ai/skills/<name>/SKILL.md` and `ai/docs/<name>.md` at the repo root
- are the **authored source of truth** for the bundle. They are
- mirrored into `src/lfp_build/docs/` by
- `uv run lfp-build-publish stage-docs` (which the default
- `lfp-build-publish` action runs automatically) before any
- `uv build`. They are for **consumers** of lfp-build; the
- contributor-facing `AGENTS.md` / `AGENT_README.md` at the repo root
- are deliberately separate.
-- `packages/lfp-build-publish/` - workspace member that owns the
- build-time staging step **and** the release workflow. Ships an
- `lfp-build-publish` CLI with three subcommands (`stage-docs`,
- `release`, `clean-docs`) plus a default action that composes
- `stage-docs && release` when the CLI is invoked with no subcommand.
- The `release` verb runs ruff -> pre-release commit ->
- bump-my-version -> git push; docs staging is deliberately not part
- of it so each half of the pipeline can be rerun in isolation. Kept
- out of the main package so the runtime install path does not depend
- on any staging or release code.
+ `lfp-build docs install`. This directory is the single source of
+ truth: authored, committed, and packaged from the same location so
+ PyPI wheels, `pip install git+...` clones, and editable installs all
+ carry the bundle without a separate staging step.
 - `tests/` - flat `def test_*` functions, no test classes.
 
 The package layout intentionally mirrors the CLI tree: when adding a new
 verb, create `commands/<verb>.py` and mount it in `cli.py`.
 
-## Bundle-docs workflow
+## Bundle contents (self-hosting the SKILL / docs)
 
-`lfp-build` ships a small library of SKILL.md skills and Markdown
-reference docs so consumers can `lfp-build skills install` /
-`lfp-build docs install` into their local Cursor / Claude directories.
-The pipeline splits authoring from packaging so the git tree stays
-clean:
+The SKILL.md at `src/lfp_build/docs/lfp-build-workspace/SKILL.md` and the
+reference guide at `src/lfp_build/docs/lfp-build-conventions.md` are
+exactly what `lfp-build skills install` / `lfp-build docs install` ship
+to consumer projects. When working on this repo, follow them as though
+they were installed here - they document the workspace-member layout,
+the sync verbs, and the coding conventions that this repo also expects
+of contributors. Edits to those files apply immediately at runtime (the
+bundle is read via `importlib.resources` from the same on-disk path) and
+will land in the next published wheel.
 
-1. **Author** under `ai/skills/<name>/SKILL.md` (skills) and
-   `ai/docs/<name>.md` (docs) at the repo root. This is what git tracks.
-2. **Stage** into `src/lfp_build/docs/` with
-   `uv run lfp-build-publish stage-docs` (or run the default
-   `uv run lfp-build-publish` release workflow, which stages as its
-   second step). CI/CD runs the CLI before `uv build --wheel` so the
-   wheel published to PyPI carries the bundle.
-3. **Ship**: `uv_build` picks up everything under `src/lfp_build/docs/`
-   as package data via the `lfp_build.docs` subpackage; consumers
-   installing the wheel get the content via `importlib.resources`.
+## Publish workflow
 
-`lfp_build` is intentionally a **namespace package** (no
-`src/lfp_build/__init__.py`) so `lfp-build-publish` can contribute
-`lfp_build.publish` from a separate wheel. Do not reintroduce
-`src/lfp_build/__init__.py` without also updating
-`[tool.uv.build-backend]` in both packages.
+`mise.toml` exposes two tasks:
+
+- `mise run ruff-fix` - runs `uv run ruff check . --fix --unsafe-fixes`
+  followed by `uv run ruff format .`.
+- `mise run publish [patch|minor|major]` - depends on `ruff-fix`, then
+  `git add .`, commits any staged changes as `pre-release: staging
+  changes`, invokes `uv run bump-my-version bump <part>`, and finally
+  pushes `HEAD --tags` to `origin`. Never run this without explicit user
+  consent (see "What never to do without explicit consent" below).
+
+CI/CD builds the wheel from the tracked tree, so no separate staging
+step exists (or is needed): `uv_build` picks up everything under
+`src/lfp_build/docs/` as package data via the `lfp_build.docs`
+subpackage.
 
 ## README sentinels
 

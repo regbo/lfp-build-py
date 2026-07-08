@@ -464,13 +464,9 @@ lfp-build wheel into the consumer's Cursor / Claude host directories, so
 agents working in a downstream workspace know how to operate the
 `lfp-build` verbs and conventions.
 
-Bundled content is authored at the repo root under
-`ai/skills/<name>/SKILL.md` (source of truth, git-tracked) and staged
-into `src/lfp_build/docs/<name>/SKILL.md` by
-`uv run lfp-build-publish stage-docs` (or as part of the default
-`uv run lfp-build-publish` release workflow) before `uv build`.
-`uv_build` ships the staged tree in the wheel because it sits inside
-`module-root`, and the install verb reads it via
+Bundled skills live inside the package at
+`src/lfp_build/docs/<name>/SKILL.md` (tracked in git and shipped in the
+wheel by `uv_build`). The install verb reads them via
 `importlib.resources` without caring whether lfp-build is running from
 a wheel install or a source checkout.
 
@@ -546,11 +542,10 @@ target host directory for each selected --target:
 <!-- END:cmd -->
 
 `lfp-build docs install` mirrors the same shape as `skills install`, but
-for the Markdown reference docs. Authored under `ai/docs/<name>.md` at
-the repo root and staged into `src/lfp_build/docs/<name>.md` by
-`uv run lfp-build-publish stage-docs`. Files land flat under the host's
-`docs/` subdirectory (for example,
-`.cursor/docs/lfp-build-conventions.md`).
+for the Markdown reference docs. Bundled docs live at
+`src/lfp_build/docs/<name>.md` inside the package (tracked in git,
+shipped in the wheel). Files land flat under the host's `docs/`
+subdirectory (for example, `.cursor/docs/lfp-build-conventions.md`).
 
 ```bash
 # Install every bundled doc into ./.cursor/docs and ./.claude/docs
@@ -660,24 +655,17 @@ src/lfp_build/
 │   └── _install.py      # shared install workflow for skills/docs
 ├── templates/
 │   └── init_pyproject.toml  # bundled root pyproject.toml template
-└── docs/                # generated bundle for `skills install` / `docs install`
-    ├── __init__.py      # tracked; keeps the subpackage importable
+└── docs/                # tracked bundle for `skills install` / `docs install`
+    ├── __init__.py      # keeps the subpackage importable
     ├── <skill>/         # each skill subdir holds a SKILL.md
     └── <doc>.md         # each top-level *.md is a reference doc
 ```
 
-The `docs/` subpackage is populated by `lfp-build-publish stage-docs`
-from the authored sources at `<repo-root>/ai/skills/` and
-`<repo-root>/ai/docs/`. Everything except `__init__.py` is gitignored
-and rebuilt on demand; CI/CD invokes the CLI (either
-`uv run lfp-build-publish stage-docs` alone or the default
-`uv run lfp-build-publish` release workflow) before `uv build --wheel`
-so the bundle ships in the wheel.
-
-Sibling workspace member `packages/lfp-build-publish/` owns the staging
-CLI. It contributes `lfp_build.publish` as a namespace subpackage of
-`lfp_build`, which is why the root `lfp_build/` package intentionally
-does **not** carry an `__init__.py`.
+The `docs/` subpackage is the single source of truth for bundled agent
+content: authored, committed, and packaged from the same location.
+`uv_build` picks up everything under `src/lfp_build/docs/` as package
+data, so every install path (PyPI wheel, `pip install git+...`,
+editable install) ships the bundle without any separate staging step.
 
 ### cli.py
 
@@ -760,13 +748,13 @@ output back into the markdown.
 ### bundle.py
 
 Discovers and installs the SKILL.md skills and Markdown docs shipped in
-`src/lfp_build/docs/` via `importlib.resources`. The runtime bundle is
-flat: subdirectories with a `SKILL.md` are skills, and top-level `*.md`
-files are reference docs. Provides the underlying `install()` /
+`src/lfp_build/docs/` via `importlib.resources`. The bundle is flat:
+subdirectories with a `SKILL.md` are skills, and top-level `*.md` files
+are reference docs. Provides the underlying `install()` /
 `list_bundled_names()` / `resolve_target_dir()` helpers that both
-`commands/skills.py` and `commands/docs.py` share. Never writes to the
-staged bundle - that responsibility lives in the `lfp-build-publish`
-workspace member.
+`commands/skills.py` and `commands/docs.py` share. Read-only against
+the tracked bundle - the source tree is the single copy of the
+content.
 
 ### commands/skills.py
 
@@ -788,36 +776,20 @@ resolves the requested hosts, delegates the actual copy to
 `bundle.install`, and logs a consistent per-host summary so both verbs
 report identically shaped output.
 
-### packages/lfp-build-publish
+### mise.toml
 
-Sibling workspace member that owns the workspace publishing pipeline.
-Contributes `lfp_build.publish` as a namespace subpackage and ships the
-`lfp-build-publish` CLI. The pipeline is split into two independent
-steps plus a default action that composes them:
+`mise.toml` exposes the release workflow as two tasks:
 
-- `stage-docs` mirrors `<repo-root>/ai/skills/*/SKILL.md` into
-  `src/lfp_build/docs/<name>/SKILL.md` and `<repo-root>/ai/docs/*.md`
-  into `src/lfp_build/docs/<name>.md`, so `uv_build` picks up the
-  bundle when it builds the `lfp-build` wheel.
-- `release` drives the git side of the pipeline:
-  `ruff check --fix --unsafe-fixes` + `ruff format`, then
-  `git add . && git commit` (only if any changes are staged), then
-  `bump-my-version bump <part> --message <template>`, then
-  `git push origin HEAD --tags`. Skippable via `--no-format-code` and
-  `--no-push`.
-- `clean-docs` empties the staged tree while preserving the tracked
-  `__init__.py`.
+- `mise run ruff-fix` runs `uv run ruff check . --fix --unsafe-fixes`
+  followed by `uv run ruff format .`.
+- `mise run publish [patch|minor|major]` depends on `ruff-fix`, then
+  `git add .`, commits any staged changes as `pre-release: staging
+  changes`, invokes `uv run bump-my-version bump <part>`, and pushes
+  `HEAD --tags` to `origin`.
 
-**Default action** (no subcommand, e.g. `uv run lfp-build-publish` or
-`uv run lfp-build-publish minor`): runs `stage-docs` and then `release`
-with the given options - equivalent to
-`lfp-build-publish stage-docs && lfp-build-publish release` in one shot.
-To skip either half of the pipeline, call the corresponding subcommand
-directly.
-
-CI/CD calls the CLI directly before `uv build --wheel` so releases
-published to PyPI include the bundle. Nothing under
-`src/lfp_build/docs/` (other than `__init__.py`) is tracked in git.
+No separate docs-staging step exists: the bundle at
+`src/lfp_build/docs/` is tracked in git, so `uv build --wheel` (invoked
+locally or by CI/CD) always picks it up as-is.
 
 ## Development
 
