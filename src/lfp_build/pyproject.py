@@ -137,10 +137,12 @@ class PyProject:
             if not isinstance(value, Mapping):
                 if create:
                     value = tomlkit.table(True)
-                    if key in cur_table:
-                        cur_table.remove(key)
-                    else:
-                        cur_table.add(key, value)
+                    # Item assignment (rather than add/remove) both overwrites an
+                    # existing non-table value and creates a missing key, and it
+                    # works on OutOfOrderTableProxy tables (produced when a table
+                    # like [tool.uv] is split across non-contiguous headers),
+                    # which do not implement `.add()`.
+                    cur_table[key] = value
                 else:
                     return None
             cur_table = value
