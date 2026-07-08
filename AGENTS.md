@@ -39,11 +39,59 @@ short:
 - `src/lfp_build/commands/<verb>.py` - one file per CLI verb.
 - `src/lfp_build/{workspace,pyproject,version,names,util,_config,_hooks (merged into commands/hooks.py)}.py` - shared primitives.
 - `src/lfp_build/templates/` - bundled resource files (loaded via
-  `importlib.resources`, included in wheel + sdist).
+ `importlib.resources`, included in wheel + sdist).
+- `src/lfp_build/docs/` - **generated** agent-facing bundle
+ (`<name>/SKILL.md` for skills, `<name>.md` for reference docs) that
+ ships in the wheel and powers `lfp-build skills install` /
+ `lfp-build docs install`. Only `__init__.py` is tracked; every other
+ entry is gitignored and rebuilt by `lfp-build-publish stage-docs`.
+- `ai/skills/<name>/SKILL.md` and `ai/docs/<name>.md` at the repo root
+ are the **authored source of truth** for the bundle. They are
+ mirrored into `src/lfp_build/docs/` by
+ `uv run lfp-build-publish stage-docs` (which the default
+ `lfp-build-publish` action runs automatically) before any
+ `uv build`. They are for **consumers** of lfp-build; the
+ contributor-facing `AGENTS.md` / `AGENT_README.md` at the repo root
+ are deliberately separate.
+- `packages/lfp-build-publish/` - workspace member that owns the
+ build-time staging step **and** the release workflow. Ships an
+ `lfp-build-publish` CLI with three subcommands (`stage-docs`,
+ `release`, `clean-docs`) plus a default action that composes
+ `stage-docs && release` when the CLI is invoked with no subcommand.
+ The `release` verb runs ruff -> pre-release commit ->
+ bump-my-version -> git push; docs staging is deliberately not part
+ of it so each half of the pipeline can be rerun in isolation. Kept
+ out of the main package so the runtime install path does not depend
+ on any staging or release code.
 - `tests/` - flat `def test_*` functions, no test classes.
 
 The package layout intentionally mirrors the CLI tree: when adding a new
 verb, create `commands/<verb>.py` and mount it in `cli.py`.
+
+## Bundle-docs workflow
+
+`lfp-build` ships a small library of SKILL.md skills and Markdown
+reference docs so consumers can `lfp-build skills install` /
+`lfp-build docs install` into their local Cursor / Claude directories.
+The pipeline splits authoring from packaging so the git tree stays
+clean:
+
+1. **Author** under `ai/skills/<name>/SKILL.md` (skills) and
+   `ai/docs/<name>.md` (docs) at the repo root. This is what git tracks.
+2. **Stage** into `src/lfp_build/docs/` with
+   `uv run lfp-build-publish stage-docs` (or run the default
+   `uv run lfp-build-publish` release workflow, which stages as its
+   second step). CI/CD runs the CLI before `uv build --wheel` so the
+   wheel published to PyPI carries the bundle.
+3. **Ship**: `uv_build` picks up everything under `src/lfp_build/docs/`
+   as package data via the `lfp_build.docs` subpackage; consumers
+   installing the wheel get the content via `importlib.resources`.
+
+`lfp_build` is intentionally a **namespace package** (no
+`src/lfp_build/__init__.py`) so `lfp-build-publish` can contribute
+`lfp_build.publish` from a separate wheel. Do not reintroduce
+`src/lfp_build/__init__.py` without also updating
+`[tool.uv.build-backend]` in both packages.
 
 ## README sentinels
 
@@ -93,11 +141,11 @@ defaults. Follow them when editing existing code or writing new code:
   `MutableMapping` but **not** the `.add()` / `.remove()` methods that
   `tomlkit.Table` exposes. Use `setdefault` / `__setitem__` / `__delitem__`
   to mutate it.
-- **`PyProject.table(*keys, create=True)`** has a known bug for
-  `OutOfOrderTableProxy` parents (calls `.add()`, which the proxy
-  doesn't have). Until that helper is fixed, walk the path manually
-  with `setdefault(...)` chains in new code that may target proxied
-  sub-tables.
+- **`PyProject.table(*keys, create=True)`** is safe on
+  `OutOfOrderTableProxy` parents - it walks with `__setitem__`, not
+  `.add()` (see `test_table_create_on_out_of_order_table`). Prefer it
+  over hand-rolled `setdefault(...)` chains so table creation stays
+  consistent across sync steps.
 - **`_config.MEMBER_PROJECT_DIRECT_REFERENCE` defaults to `False`** when
   `LFP_BUILD_MEMBER_PROJECT_DIRECT_REFERENCE` is unset. Internal
   workspace deps are emitted as plain names by default; only `=true` /

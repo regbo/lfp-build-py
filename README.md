@@ -10,6 +10,7 @@ A workspace management CLI for multi-project Python repositories. It helps boots
 - **Wheel Builds**: Build wheel artifacts for all workspace members or a selected subset.
 - **README Automation**: Refresh command output blocks embedded in documentation files.
 - **Bulk Renames**: Rewrite names across files and directories, with optional dash-to-underscore handling.
+- **Agent Content Install**: Ship SKILL.md skills and Markdown reference docs from the lfp-build wheel into the consumer's Cursor / Claude host directories.
 
 ## Installation
 
@@ -74,8 +75,8 @@ pip install -e .
 ## Commands
 
 The CLI follows a uv-style flat verb shape. Top-level verbs cover the common
-workflow (`init`, `sync`, `build`, `add`, `hooks`, `rename`), with a single
-subcommand group for `readme`.
+workflow (`init`, `sync`, `build`, `add`, `hooks`, `rename`), with small
+subcommand groups for `readme`, `skills`, and `docs`.
 
 ### Init
 
@@ -132,16 +133,20 @@ Sets up a pyproject.toml and a standard src/<package>/__init__.py layout.
 Internal workspace dependencies are automatically synchronized after creation.
 
 ╭─ Parameters ─────────────────────────────────────────────────────────────────╮
-│    --working-directory      Set the current working directory before         │
-│                             dispatching to a subcommand.                     │
-│ *  NAME --name              The name of the new project (used for directory  │
-│                             and package name). [required]                    │
-│    --path -p                Optional parent directory within the workspace   │
-│                             root. Defaults to packages/. [default: packages] │
-│    --project-dependency -c  List of existing workspace projects to depend    │
-│                             on.                                              │
-│    --dependency -d          Additional dependency strings to add to the new  │
-│                             project's project.dependencies array.            │
+│    --working-directory       Set the current working directory before        │
+│                              dispatching to a subcommand.                    │
+│ *  NAME --name               The name of the new project (used for directory │
+│                              and package name). [required]                   │
+│    --path -p                 Optional parent directory within the workspace  │
+│                              root. Defaults to packages/. [default:          │
+│                              packages]                                       │
+│    --project-dependency -c   List of existing workspace projects to depend   │
+│                              on.                                             │
+│    --dependency -d           Additional dependency strings to add to the new │
+│                              project's project.dependencies array.           │
+│    --prefix-root-project -r  If True, prefix the new project name and        │
+│                              package path with the root project name.        │
+│                              [default: True]                                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 <!-- END:cmd -->
@@ -180,7 +185,10 @@ Usage: lfp-build sync [OPTIONS]
 Synchronize project configurations across the workspace.                        
 
 This command performs several synchronization tasks to keep member projects     
-aligned with the root project settings and ensure consistent dependencies.
+aligned with the root project settings and ensure consistent dependencies.      
+
+Member [project].requires-python is always synchronized from the root project   
+(or the running interpreter when the root omits it).
 
 ╭─ Parameters ─────────────────────────────────────────────────────────────────╮
 │ --working-directory  Set the current working directory before dispatching to │
@@ -201,13 +209,15 @@ aligned with the root project settings and ensure consistent dependencies.
 │                      [default: True]                                         │
 │ --member-paths       Sync member path patterns. [default: True]              │
 │ --type-checkers      Maintain [tool.pyrefly].search-path and                 │
-│                      [tool.pyright].extraPaths on the root project. Each     │
-│                      starts with "." and then, for every pattern in          │
-│                      [tool.uv.workspace].members, appends                    │
-│                      <pattern>/<module-root>. The module-root value is       │
-│                      derived from each member's                              │
-│                      [tool.uv.build-backend].module-root, defaulting to      │
-│                      "src". [default: True]                                  │
+│                      [tool.pyright].extraPaths on the root project. Emits    │
+│                      one literal <rel>/<module-root> entry per known         │
+│                      project: the root project (when it declares [project])  │
+│                      plus every workspace member. module-root is read from   │
+│                      each project's [tool.uv.build-backend].module-root and  │
+│                      defaults to "src". No glob patterns are written;        │
+│                      entries mirror the actual pyproject metadata so         │
+│                      excluded / missing members never contribute a phantom   │
+│                      path. [default: True]                                   │
 │ --reorder-pyproject  Order pyproject entries where applicable. [default:     │
 │                      True]                                                   │
 │ --format-pyproject   Format pyproject.toml files using taplo. [default:      │
@@ -392,6 +402,167 @@ BEGIN and END markers with a formatted code block containing the command's outpu
 
 This approach ensures your documentation stays in sync with actual command behavior, preventing documentation drift.
 
+### Skills
+
+<!-- BEGIN:cmd lfp-build skills --help -->
+```shell
+Usage: lfp-build skills COMMAND
+
+Install lfp-build agent skills into Cursor / Claude host directories.
+
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ install  Install bundled lfp-build agent skills.                             │
+│ list     List the names of bundled lfp-build agent skills.                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Parameters ─────────────────────────────────────────────────────────────────╮
+│ --working-directory  Set the current working directory before dispatching to │
+│                      a subcommand.                                           │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+<!-- END:cmd -->
+
+
+
+<!-- BEGIN:cmd lfp-build skills install --help -->
+```shell
+Usage: lfp-build skills install [OPTIONS]
+
+Install bundled lfp-build agent skills.                                         
+
+Copies every bundled skill (or the subset selected with --name) into the target 
+host directory for each selected --target:                                      
+
+ • Cursor: <base_dir>/.cursor/skills/ (or ~/.cursor/skills/ with --global).     
+ • Claude: <base_dir>/.claude/skills/ (or ~/.claude/skills/ with --global).
+
+╭─ Parameters ─────────────────────────────────────────────────────────────────╮
+│ --working-directory  Set the current working directory before dispatching to │
+│                      a subcommand.                                           │
+│ --target             Which host(s) to install for: a specific host name or   │
+│                      all (default) to install for every supported host.      │
+│                      [choices: cursor, claude, all] [default: all]           │
+│ --global             When set, install into the user's home directory        │
+│                      instead of base_dir. Exposed on the CLI as --global.    │
+│                      [default: False]                                        │
+│ --force -f           Overwrite existing skill files whose content differs    │
+│                      from the bundled source. Without --force, divergent     │
+│                      existing files are left alone and reported as skipped.  │
+│                      [default: False]                                        │
+│ --dry-run            Preview what would be installed without touching the    │
+│                      filesystem. [default: False]                            │
+│ --name               Restrict the install to specific skill names            │
+│                      (repeatable). Unknown names raise an error listing what │
+│                      is available.                                           │
+│ --base-dir           Base directory for non-global installs. Defaults to the │
+│                      current working directory.                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+<!-- END:cmd -->
+
+`lfp-build skills install` copies the SKILL.md skills bundled inside the
+lfp-build wheel into the consumer's Cursor / Claude host directories, so
+agents working in a downstream workspace know how to operate the
+`lfp-build` verbs and conventions.
+
+Bundled content is authored at the repo root under
+`ai/skills/<name>/SKILL.md` (source of truth, git-tracked) and staged
+into `src/lfp_build/docs/<name>/SKILL.md` by
+`uv run lfp-build-publish stage-docs` (or as part of the default
+`uv run lfp-build-publish` release workflow) before `uv build`.
+`uv_build` ships the staged tree in the wheel because it sits inside
+`module-root`, and the install verb reads it via
+`importlib.resources` without caring whether lfp-build is running from
+a wheel install or a source checkout.
+
+```bash
+# Install every bundled skill into ./.cursor/skills and ./.claude/skills
+uv run lfp-build skills install
+
+# Install into ~/.cursor/skills and ~/.claude/skills
+uv run lfp-build skills install --global
+
+# Install into Cursor only, and preview what would happen
+uv run lfp-build skills install --target cursor --dry-run
+
+# Overwrite existing skills whose content has drifted from the bundle
+uv run lfp-build skills install --force
+```
+
+### Docs
+
+<!-- BEGIN:cmd lfp-build docs --help -->
+```shell
+Usage: lfp-build docs COMMAND
+
+Install lfp-build agent docs into Cursor / Claude host directories.
+
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ install  Install bundled lfp-build agent docs.                               │
+│ list     List the names of bundled lfp-build agent docs.                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Parameters ─────────────────────────────────────────────────────────────────╮
+│ --working-directory  Set the current working directory before dispatching to │
+│                      a subcommand.                                           │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+<!-- END:cmd -->
+
+
+
+<!-- BEGIN:cmd lfp-build docs install --help -->
+```shell
+Usage: lfp-build docs install [OPTIONS]
+
+Install bundled lfp-build agent docs.                                           
+
+Copies every bundled Markdown doc (or the subset selected with --name) into the 
+target host directory for each selected --target:                               
+
+ • Cursor: <base_dir>/.cursor/docs/ (or ~/.cursor/docs/ with --global).         
+ • Claude: <base_dir>/.claude/docs/ (or ~/.claude/docs/ with --global).
+
+╭─ Parameters ─────────────────────────────────────────────────────────────────╮
+│ --working-directory  Set the current working directory before dispatching to │
+│                      a subcommand.                                           │
+│ --target             Which host(s) to install for: a specific host name or   │
+│                      all (default) to install for every supported host.      │
+│                      [choices: cursor, claude, all] [default: all]           │
+│ --global             When set, install into the user's home directory        │
+│                      instead of base_dir. Exposed on the CLI as --global.    │
+│                      [default: False]                                        │
+│ --force -f           Overwrite existing doc files whose content differs from │
+│                      the bundled source. Without --force, divergent existing │
+│                      files are left alone and reported as skipped. [default: │
+│                      False]                                                  │
+│ --dry-run            Preview what would be installed without touching the    │
+│                      filesystem. [default: False]                            │
+│ --name               Restrict the install to specific doc names (repeatable, │
+│                      without the .md suffix). Unknown names raise an error   │
+│                      listing what is available.                              │
+│ --base-dir           Base directory for non-global installs. Defaults to the │
+│                      current working directory.                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+<!-- END:cmd -->
+
+`lfp-build docs install` mirrors the same shape as `skills install`, but
+for the Markdown reference docs. Authored under `ai/docs/<name>.md` at
+the repo root and staged into `src/lfp_build/docs/<name>.md` by
+`uv run lfp-build-publish stage-docs`. Files land flat under the host's
+`docs/` subdirectory (for example,
+`.cursor/docs/lfp-build-conventions.md`).
+
+```bash
+# Install every bundled doc into ./.cursor/docs and ./.claude/docs
+uv run lfp-build docs install
+
+# Install into ~/.cursor/docs and ~/.claude/docs
+uv run lfp-build docs install --global
+
+# Install only the named doc, into Claude only
+uv run lfp-build docs install --target claude --name lfp-build-conventions
+```
+
 ## Adopting lfp-build in Your Project
 
 ### Initial Setup
@@ -475,6 +646,7 @@ src/lfp_build/
 ├── pyproject.py         # pyproject.toml read/write/order/format
 ├── version.py           # git-derived semver helpers
 ├── util.py              # subprocess helpers
+├── bundle.py            # bundled agent skill/doc discovery + install
 ├── commands/
 │   ├── init.py          # `lfp-build init`
 │   ├── add.py           # `lfp-build add`
@@ -482,10 +654,30 @@ src/lfp_build/
 │   ├── build.py         # `lfp-build build`
 │   ├── hooks.py         # `lfp-build hooks`
 │   ├── rename.py        # `lfp-build rename`
-│   └── readme.py        # `lfp-build readme update`
-└── templates/
-    └── init_pyproject.toml  # bundled root pyproject.toml template
+│   ├── readme.py        # `lfp-build readme update`
+│   ├── skills.py        # `lfp-build skills install|list`
+│   ├── docs.py          # `lfp-build docs install|list`
+│   └── _install.py      # shared install workflow for skills/docs
+├── templates/
+│   └── init_pyproject.toml  # bundled root pyproject.toml template
+└── docs/                # generated bundle for `skills install` / `docs install`
+    ├── __init__.py      # tracked; keeps the subpackage importable
+    ├── <skill>/         # each skill subdir holds a SKILL.md
+    └── <doc>.md         # each top-level *.md is a reference doc
 ```
+
+The `docs/` subpackage is populated by `lfp-build-publish stage-docs`
+from the authored sources at `<repo-root>/ai/skills/` and
+`<repo-root>/ai/docs/`. Everything except `__init__.py` is gitignored
+and rebuilt on demand; CI/CD invokes the CLI (either
+`uv run lfp-build-publish stage-docs` alone or the default
+`uv run lfp-build-publish` release workflow) before `uv build --wheel`
+so the bundle ships in the wheel.
+
+Sibling workspace member `packages/lfp-build-publish/` owns the staging
+CLI. It contributes `lfp_build.publish` as a namespace subpackage of
+`lfp_build`, which is why the root `lfp_build/` package intentionally
+does **not** carry an `__init__.py`.
 
 ### cli.py
 
@@ -546,7 +738,8 @@ bootstrap.
 
 Core synchronization driver and step implementations: versions, build
 system, member tool config, member dependencies, uv workspace member path
-patterns, ruff format, and pyproject reorder/format.
+patterns, type-checker search paths (`[tool.pyrefly]` and
+`[tool.pyright]`), ruff format, and pyproject reorder/format.
 
 ### commands/build.py
 
@@ -563,6 +756,68 @@ enclosing tooling workspace itself is never modified.
 README documentation automation. Currently exposes a single `update` verb
 that re-runs `BEGIN:cmd ... END:cmd` sentinel commands and embeds their
 output back into the markdown.
+
+### bundle.py
+
+Discovers and installs the SKILL.md skills and Markdown docs shipped in
+`src/lfp_build/docs/` via `importlib.resources`. The runtime bundle is
+flat: subdirectories with a `SKILL.md` are skills, and top-level `*.md`
+files are reference docs. Provides the underlying `install()` /
+`list_bundled_names()` / `resolve_target_dir()` helpers that both
+`commands/skills.py` and `commands/docs.py` share. Never writes to the
+staged bundle - that responsibility lives in the `lfp-build-publish`
+workspace member.
+
+### commands/skills.py
+
+`lfp-build skills install` copies bundled SKILL.md skills into the
+consumer's Cursor / Claude host directories (`.cursor/skills/`,
+`.claude/skills/`, or the `~/` variants with `--global`). `list` prints
+the bundled skill names.
+
+### commands/docs.py
+
+`lfp-build docs install` mirrors the skills verb for the bundled Markdown
+reference docs, landing them flat under `.cursor/docs/` and
+`.claude/docs/`. `list` prints the bundled doc names.
+
+### commands/_install.py
+
+Shared workflow used by `commands/skills.py` and `commands/docs.py`:
+resolves the requested hosts, delegates the actual copy to
+`bundle.install`, and logs a consistent per-host summary so both verbs
+report identically shaped output.
+
+### packages/lfp-build-publish
+
+Sibling workspace member that owns the workspace publishing pipeline.
+Contributes `lfp_build.publish` as a namespace subpackage and ships the
+`lfp-build-publish` CLI. The pipeline is split into two independent
+steps plus a default action that composes them:
+
+- `stage-docs` mirrors `<repo-root>/ai/skills/*/SKILL.md` into
+  `src/lfp_build/docs/<name>/SKILL.md` and `<repo-root>/ai/docs/*.md`
+  into `src/lfp_build/docs/<name>.md`, so `uv_build` picks up the
+  bundle when it builds the `lfp-build` wheel.
+- `release` drives the git side of the pipeline:
+  `ruff check --fix --unsafe-fixes` + `ruff format`, then
+  `git add . && git commit` (only if any changes are staged), then
+  `bump-my-version bump <part> --message <template>`, then
+  `git push origin HEAD --tags`. Skippable via `--no-format-code` and
+  `--no-push`.
+- `clean-docs` empties the staged tree while preserving the tracked
+  `__init__.py`.
+
+**Default action** (no subcommand, e.g. `uv run lfp-build-publish` or
+`uv run lfp-build-publish minor`): runs `stage-docs` and then `release`
+with the given options - equivalent to
+`lfp-build-publish stage-docs && lfp-build-publish release` in one shot.
+To skip either half of the pipeline, call the corresponding subcommand
+directly.
+
+CI/CD calls the CLI directly before `uv build --wheel` so releases
+published to PyPI include the bundle. Nothing under
+`src/lfp_build/docs/` (other than `__init__.py`) is tracked in git.
 
 ## Development
 

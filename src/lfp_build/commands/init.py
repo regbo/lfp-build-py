@@ -23,11 +23,19 @@ member project.
 LOG = logs.logger(__name__)
 
 # Resource location of the bundled root ``pyproject.toml`` template. Lives
-# inside the ``lfp_build.templates`` subpackage so ``uv_build`` ships it in
-# both the wheel and the sdist, and ``importlib.resources`` can load it at
-# runtime regardless of whether the package is installed or running from a
-# source checkout.
-_INIT_PYPROJECT_TEMPLATE_PACKAGE = "lfp_build.templates"
+# in the ``templates`` subpackage next to ``commands`` inside the top-level
+# distribution package so ``uv_build`` ships it in both the wheel and the
+# sdist, and ``importlib.resources`` can load it at runtime regardless of
+# whether the package is installed or running from a source checkout.
+#
+# The template package name is resolved relative to this module at runtime
+# (``__package__`` here is ``"<dist>.commands"``, so ``rpartition('.')[0]``
+# is the top-level distribution package). This avoids hardcoding the
+# distribution name.
+_INIT_PYPROJECT_TEMPLATE_SUBPACKAGE = "templates"
+_INIT_PYPROJECT_TEMPLATE_PACKAGE = (
+    f"{__package__.rpartition('.')[0]}.{_INIT_PYPROJECT_TEMPLATE_SUBPACKAGE}"
+)
 _INIT_PYPROJECT_TEMPLATE_NAME = "init_pyproject.toml"
 
 

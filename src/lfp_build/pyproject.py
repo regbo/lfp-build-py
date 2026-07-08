@@ -7,6 +7,7 @@ import os
 import pathlib
 import shutil
 import subprocess
+import sys
 from collections.abc import Collection, Mapping, MutableMapping
 from dataclasses import dataclass, field
 from tempfile import NamedTemporaryFile
@@ -213,6 +214,20 @@ class PyProjectTree:
         )
         pyproject_tree_copy.filtered = True
         return pyproject_tree_copy
+
+
+def default_requires_python(root: PyProject | None = None) -> str:
+    """
+    Resolve the ``requires-python`` specifier for member projects.
+
+    Uses the root project's ``[project].requires-python`` when present;
+    otherwise falls back to the running interpreter's major.minor version.
+    """
+    if root is not None:
+        value = root.data.get("project", {}).get("requires-python")
+        if value is not None:
+            return str(value)
+    return f">={sys.version_info.major}.{sys.version_info.minor}"
 
 
 def reorder_document(tree: PyProjectTree) -> None:

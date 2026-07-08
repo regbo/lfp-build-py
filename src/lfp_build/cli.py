@@ -5,13 +5,14 @@ from typing import Annotated
 import cyclopts
 from lfp_logging import logs
 
-from lfp_build.commands import add, build, hooks, init, readme, rename, sync
+from lfp_build.commands import add, build, docs, hooks, init, readme, rename, skills, sync
 
 """
 Top-level entry point for the ``lfp-build`` CLI.
 
 The shape mirrors uv: flat top-level verbs for the common workflow, with a
-small subcommand group only where one is justified (``readme``).
+small subcommand group only where one is justified (``readme``, ``skills``,
+``docs``).
 
 Commands:
 - ``init NAME``: bootstrap a new uv workspace and seed ``packages/common``.
@@ -21,6 +22,8 @@ Commands:
 - ``hooks``: install or refresh the lfp-build managed git pre-commit hook.
 - ``rename``: bulk rename strings across files and directories.
 - ``readme update``: refresh README command-help sentinel blocks.
+- ``skills install``: install bundled lfp-build agent skills into Cursor / Claude.
+- ``docs install``: install bundled lfp-build agent docs into Cursor / Claude.
 """
 
 LOG = logs.logger(__name__)
@@ -56,6 +59,8 @@ app.command(build.build, name="build")
 app.command(hooks.hooks, name="hooks")
 app.command(rename.app, name="rename")
 app.command(readme.app, name="readme")
+app.command(skills.app, name="skills")
+app.command(docs.app, name="docs")
 
 
 def main() -> None:

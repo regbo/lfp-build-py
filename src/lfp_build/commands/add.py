@@ -86,11 +86,15 @@ def add(
     project_dir.mkdir(parents=True, exist_ok=True)
     LOG.info("Creating member project: %s", project_dir)
 
+    pyproject_tree = pyproject.tree(metadata=metadata)
     pyproject_data = tomlkit.document()
     pyproject_project_table = tomlkit.table(True)
     pyproject_project_table.add("name", project_name)
     pyproject_project_table.add("version", "0")
-    pyproject_project_table.add("requires-python", ">=3.6")
+    pyproject_project_table.add(
+        "requires-python",
+        pyproject.default_requires_python(pyproject_tree.root),
+    )
     pyproject_data.add("project", pyproject_project_table)
 
     if len(module_name_parts) > 1:
@@ -102,7 +106,6 @@ def add(
         uv = tool.setdefault("uv", tomlkit.table(True))
         uv.add("build-backend", pyproject_build_backend)
 
-    pyproject_tree = pyproject.tree(metadata=metadata)
     deps = tomlkit.array()
     deps.multiline(True)
     has_deps = False

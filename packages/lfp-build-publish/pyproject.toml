@@ -1,0 +1,22 @@
+[build-system]
+requires = ["uv_build>=0.9.6"]
+build-backend = "uv_build"
+
+[project]
+name = "lfp-build-publish"
+version = "0.1.18+rev569fada"
+requires-python = ">=3.10"
+dependencies = [
+    # CLI framework used for command parsing and help output.
+    "cyclopts",
+    # Logging facade shared with lfp-build.
+    "lfp-logging",
+]
+
+[project.scripts]
+lfp-build-publish = "lfp_build.publish.cli:main"
+
+[tool.uv.build-backend]
+namespace = true
+module-root = "src"
+module-name = "lfp_build.publish"

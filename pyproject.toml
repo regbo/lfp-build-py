@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "lfp-build"
-version = "0.1.18"
+version = "0.1.18+rev569fada"
 description = "Local build utilities"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -56,3 +56,25 @@ tag = true
 filename = "pyproject.toml"
 search = 'version = "{current_version}"'
 replace = 'version = "{new_version}"'
+
+[tool.uv.build-backend]
+# ``lfp_build`` is a namespace package shared with ``lfp-build-publish``
+# so the workspace member can install ``lfp_build.publish`` alongside the
+# ``lfp_build`` modules shipped from this project. ``namespace = true``
+# tells ``uv_build`` to skip the default ``__init__.py`` check at the
+# module root and simply package everything under ``src/lfp_build/``.
+module-name = "lfp_build"
+module-root = "src"
+namespace = true
+
+[tool.uv.sources]
+lfp-build-publish = { workspace = true }
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.pyrefly]
+search-path = ["src", "packages/lfp-build-publish/src"]
+
+[tool.pyright]
+extraPaths = ["src", "packages/lfp-build-publish/src"]

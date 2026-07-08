@@ -1,4 +1,3 @@
-import fnmatch
 import logging
 import pathlib
 from collections import defaultdict
@@ -19,8 +18,8 @@ from lfp_build.version import derive as _derive_version
 Implements ``lfp-build sync``.
 
 Synchronizes versions, build systems, shared tool settings, internal member
-dependencies, and uv workspace member path patterns across the root project
-and its member projects.
+dependencies, uv workspace member path patterns, and type-checker search
+paths across the root project and its member projects.
 """
 
 LOG = logs.logger(__name__)
@@ -50,6 +49,9 @@ def sync(
     This command performs several synchronization tasks to keep member projects
     aligned with the root project settings and ensure consistent dependencies.
 
+    Member ``[project].requires-python`` is always synchronized from the root
+    project (or the running interpreter when the root omits it).
+
     Parameters
     ----------
     name
@@ -70,11 +72,14 @@ def sync(
         Sync member path patterns.
     type_checkers
         Maintain ``[tool.pyrefly].search-path`` and
-        ``[tool.pyright].extraPaths`` on the root project. Each starts with
-        ``"."`` and then, for every pattern in ``[tool.uv.workspace].members``,
-        appends ``<pattern>/<module-root>``. The ``module-root`` value is
-        derived from each member's ``[tool.uv.build-backend].module-root``,
-        defaulting to ``"src"``.
+        ``[tool.pyright].extraPaths`` on the root project. Emits one
+        literal ``<rel>/<module-root>`` entry per known project: the
+        root project (when it declares ``[project]``) plus every
+        workspace member. ``module-root`` is read from each project's
+        ``[tool.uv.build-backend].module-root`` and defaults to
+        ``"src"``. No glob patterns are written; entries mirror the
+        actual pyproject metadata so excluded / missing members never
+        contribute a phantom path.
     reorder_pyproject
         Order pyproject entries where applicable.
     format_pyproject
@@ -94,6 +99,7 @@ def sync(
         sync_version(pyproject_tree.projects())
     if build_system:
         sync_build_system(pyproject_tree)
+    sync_requires_python(pyproject_tree)
     if member_project:
         sync_member_project(pyproject_tree)
     if sources:
@@ -159,6 +165,31 @@ def sync_build_system(pyproject_tree: PyProjectTree) -> None:
             member.data[key] = deepcopy(data)
 
 
+def sync_requires_python(pyproject_tree: PyProjectTree) -> None:
+    """
+    Synchronize ``[project].requires-python`` from the root project to all members.
+
+    When the root project omits ``requires-python``, the running interpreter's
+    major.minor version is used as the fallback specifier.
+    """
+    key = "requires-python"
+    requires_python = pyproject.default_requires_python(pyproject_tree.root)
+    for member in pyproject_tree.members.values():
+        project_data = member.data.get("project")
+        if project_data is None:
+            continue
+        current = project_data.get(key)
+        if current == requires_python:
+            continue
+        project_data[key] = requires_python
+        LOG.debug(
+            "Updated requires-python - proj:%s requires_python:%s previous:%s",
+            member.path,
+            requires_python,
+            current,
+        )
+
+
 def sync_member_project(pyproject_tree: PyProjectTree) -> None:
     """
     Merge the [tool.lfp-build.member-project] configuration from root to all member projects.
@@ -193,13 +224,102 @@ def sync_sources(unfiltered_pyproject_tree: PyProjectTree, pyproject_tree: PyPro
     In both modes, ``tool.uv.sources.<dep> = { workspace = true }`` is
     maintained for detected internal member dependencies.
     """
-    if unfiltered_pyproject_tree.filtered:
-        raise ValueError("Unfiltered workspace tree required for sources sync")
+    _require_unfiltered_tree(unfiltered_pyproject_tree, "sources sync")
     member_names = unfiltered_pyproject_tree.members.keys()
     _sync_sources(proj=pyproject_tree.root, member_dependencies=member_names)
 
     for proj in pyproject_tree.members.values():
         _sync_member_sources(unfiltered_pyproject_tree, proj)
+
+
+def sync_member_paths(unfiltered_pyproject_tree: PyProjectTree) -> None:
+    """
+    Refresh ``[tool.uv.workspace].members`` patterns on the root project.
+
+    Member directories discovered in the workspace are consolidated into the
+    smallest set of literal paths and ``parent/*`` glob patterns that still
+    match every member while honoring existing exclude patterns.
+    """
+    _require_unfiltered_tree(unfiltered_pyproject_tree, "member path sync")
+    root_proj = unfiltered_pyproject_tree.root
+    workspace_key_path = ["tool", "uv", "workspace"]
+    exclude_patterns: list[str] | None = None
+    if workspace_table := root_proj.table(*workspace_key_path):
+        if exclude_item := workspace_table.get("exclude", None):
+            exclude_patterns = [item.value for item in exclude_item]
+    member_paths = [p.path.parent for p in unfiltered_pyproject_tree.members.values()]
+    member_patterns = _workspace_member_paths(
+        root_proj.path.parent,
+        member_paths,
+        exclude_patterns,
+    )
+    workspace_table = root_proj.table(*workspace_key_path, create=True)
+    members_key = "members"
+    if members_key in workspace_table:
+        if member_patterns:
+            member_table: Any = workspace_table[members_key]
+            member_table.clear()
+            member_table.extend(member_patterns)
+        else:
+            workspace_table.remove(members_key)
+    elif member_patterns:
+        workspace_table.update({members_key: member_patterns})
+
+
+def sync_type_checkers(unfiltered_pyproject_tree: PyProjectTree) -> None:
+    """
+    Maintain type-checker search paths on the root project.
+
+    Populates both ``[tool.pyrefly].search-path`` and
+    ``[tool.pyright].extraPaths`` with the same value: one literal
+    ``<rel>/<module-root>`` entry per known project in the workspace
+    tree. The root project contributes its own ``module-root`` entry
+    (for example ``"src"``) when it declares a ``[project]`` table so
+    a project living at the workspace root is picked up too.
+
+    Members are never re-discovered from the filesystem - the workspace
+    tree already carries the authoritative, exclude-honoring member
+    list from uv metadata, and each entry is derived directly from that
+    metadata. ``module-root`` is read from each project's
+    ``[tool.uv.build-backend].module-root`` and defaults to ``"src"``.
+    Other keys under ``[tool.pyrefly]`` and ``[tool.pyright]`` are left
+    untouched.
+    """
+    _require_unfiltered_tree(unfiltered_pyproject_tree, "type checker sync")
+    root_proj = unfiltered_pyproject_tree.root
+    root_dir = root_proj.path.parent.resolve()
+
+    search_paths = _module_root_search_paths(
+        root_dir=root_dir,
+        root_proj=root_proj,
+        members=unfiltered_pyproject_tree.members.values(),
+    )
+
+    pyrefly_table = root_proj.table("tool", "pyrefly", create=True)
+    pyrefly_table["search-path"] = search_paths
+    pyright_table = root_proj.table("tool", "pyright", create=True)
+    pyright_table["extraPaths"] = search_paths
+
+
+def ruff_format(projs: list[PyProject]) -> None:
+    """
+    Execute ruff formatting and linting fixes on a collection of projects.
+    """
+    for proj in projs:
+        _ruff_format(proj.path.parent)
+
+
+def _require_unfiltered_tree(tree: PyProjectTree, purpose: str) -> None:
+    """
+    Raise ``ValueError`` when ``tree`` is a filtered subtree.
+
+    Steps that mutate root-level workspace state (source tables, member
+    patterns, type-checker paths) need the full member list, not a
+    ``--name``-filtered subset. Centralizing the check keeps the error
+    message consistent across steps and avoids drifting per-step wording.
+    """
+    if tree.filtered:
+        raise ValueError(f"Unfiltered workspace tree required for {purpose}")
 
 
 def _sync_sources(*, proj: PyProject, member_dependencies: Iterable[str]) -> None:
@@ -276,197 +396,6 @@ def _sync_member_sources(pyproject_tree: PyProjectTree, proj: PyProject) -> None
             member_dependencies.append(member_dependency_name)
 
     _sync_sources(proj=proj, member_dependencies=member_dependencies)
-
-
-def sync_member_paths(
-    unfiltered_pyproject_tree: PyProjectTree,
-) -> None:
-    """
-    Refresh ``[tool.uv.workspace].members`` patterns on the root project.
-
-    Member directories discovered in the workspace are consolidated into the
-    smallest set of literal paths and ``parent/*`` glob patterns that still
-    match every member while honoring existing exclude patterns.
-    """
-    if unfiltered_pyproject_tree.filtered:
-        raise ValueError("Unfiltered workspace tree required for member path sync")
-    root_proj = unfiltered_pyproject_tree.root
-    workspace_key_path = ["tool", "uv", "workspace"]
-    exclude_patterns: list[str] | None = None
-    if workspace_table := root_proj.table(*workspace_key_path):
-        if exclude_item := workspace_table.get("exclude", None):
-            exclude_patterns = [item.value for item in exclude_item]
-    member_paths = [p.path.parent for p in unfiltered_pyproject_tree.members.values()]
-    member_patterns = _workspace_member_paths(
-        root_proj.path.parent,
-        member_paths,
-        exclude_patterns,
-    )
-    workspace_table = root_proj.table(*workspace_key_path, create=True)
-    members_key = "members"
-    if members_key in workspace_table:
-        if member_patterns:
-            member_table: Any = workspace_table[members_key]
-            member_table.clear()
-            member_table.extend(member_patterns)
-        else:
-            workspace_table.remove(members_key)
-    elif member_patterns:
-        workspace_table.update({members_key: member_patterns})
-
-
-def sync_type_checkers(unfiltered_pyproject_tree: PyProjectTree) -> None:
-    """
-    Maintain type-checker search paths on the root project.
-
-    Populates both ``[tool.pyrefly].search-path`` and
-    ``[tool.pyright].extraPaths`` with the same value: ``"."`` followed by
-    one entry per pattern in ``[tool.uv.workspace].members`` with the
-    matching members' ``module-root`` appended.
-
-    Members are never re-discovered from the filesystem - the workspace
-    tree already carries the authoritative, exclude-honoring member list
-    from uv metadata. Each workspace ``members`` pattern is only used to
-    (a) select which known members it covers and (b) decide whether that
-    entry can stay as a glob (e.g. ``app-packages/cool/*/src``) or must be
-    expanded to literal per-member paths because those members disagree on
-    ``module-root``. Members whose ``module-root`` defaults to (or
-    declares) the same value across a single pattern keep the ``*``
-    placeholders intact; a divergent ``module-root`` forces expansion for
-    that pattern only. Other keys under ``[tool.pyrefly]`` and
-    ``[tool.pyright]`` are left untouched.
-    """
-    if unfiltered_pyproject_tree.filtered:
-        raise ValueError("Unfiltered workspace tree required for type checker sync")
-    root_proj = unfiltered_pyproject_tree.root
-    root_dir = root_proj.path.parent.resolve()
-
-    member_patterns = _workspace_member_patterns(root_proj)
-    module_root_paths = _module_root_search_paths(
-        root_dir=root_dir,
-        member_patterns=member_patterns,
-        members=list(unfiltered_pyproject_tree.members.values()),
-    )
-
-    search_paths = [".", *module_root_paths]
-    # Walk via setdefault so this works whether ``[tool]`` is a real Table
-    # or an OutOfOrderTableProxy synthesized by tomlkit when several
-    # ``[tool.X]`` sub-tables exist - the OutOfOrderTableProxy supports
-    # MutableMapping.setdefault but not PyProject.table(create=True).
-    tool_table = root_proj.data.setdefault("tool", tomlkit.table())
-    pyrefly_table = tool_table.setdefault("pyrefly", tomlkit.table())
-    pyrefly_table["search-path"] = search_paths
-    pyright_table = tool_table.setdefault("pyright", tomlkit.table())
-    pyright_table["extraPaths"] = search_paths
-
-
-def _workspace_member_patterns(root_proj: PyProject) -> list[str]:
-    """
-    Return the current ``[tool.uv.workspace].members`` patterns.
-
-    Reads through nested ``.get(...)`` chains so an absent ``[tool]`` or
-    ``[tool.uv.workspace]`` table simply yields an empty list rather than
-    raising, and an unusual scalar value is coerced through ``list(...)``.
-    """
-    workspace_table = root_proj.data.get("tool", {}).get("uv", {}).get("workspace", {})
-    members_value = workspace_table.get("members", None)
-    if not members_value:
-        return []
-    return [str(pattern) for pattern in members_value]
-
-
-def _module_root(member: PyProject) -> str:
-    """
-    Return the ``[tool.uv.build-backend].module-root`` for a member.
-
-    Defaults to ``"src"`` when the key is unset so uv-build members that
-    rely on the standard layout still contribute a search-path entry.
-    """
-    build_backend = member.data.get("tool", {}).get("uv", {}).get("build-backend", {})
-    return str(build_backend.get("module-root", _DEFAULT_MODULE_ROOT))
-
-
-def _module_root_search_paths(
-    *,
-    root_dir: pathlib.Path,
-    member_patterns: Iterable[str],
-    members: Iterable[PyProject],
-) -> list[str]:
-    """
-    Build the module-root search paths for the workspace.
-
-    ``members`` is treated as the authoritative, exclude-honoring member
-    list from uv metadata; the filesystem is never re-scanned. Each
-    workspace pattern is matched against member relative paths on a
-    component-by-component basis (via :func:`_pattern_matches_path`) so
-    ``*`` never crosses ``/`` and patterns like ``app-packages/cool/*``
-    only pick up members that live at that exact depth. When a pattern's
-    matched members share a single ``module-root``, the entry is emitted
-    as ``<pattern>/<module-root>`` (keeping any ``*`` placeholders);
-    otherwise it is expanded to literal per-member entries so each
-    member's own ``module-root`` is preserved.
-    """
-    members = list(members)
-    member_rels: dict[str, PyProject] = {}
-    for m in members:
-        try:
-            rel = m.path.parent.resolve().relative_to(root_dir).as_posix()
-        except ValueError:
-            LOG.debug("Skip member outside root: member=%s path=%s", m, m.path)
-            continue
-        member_rels[rel] = m
-
-    results: list[str] = []
-    seen_paths: set[str] = set()
-
-    for pattern in member_patterns:
-        matching_members = [
-            m for rel, m in member_rels.items() if _pattern_matches_path(pattern, rel)
-        ]
-        if not matching_members:
-            LOG.debug("Skip pattern=%s reason=no_matching_members", pattern)
-            continue
-
-        module_roots = {_module_root(m) for m in matching_members}
-        entries: list[str] = []
-        if len(module_roots) == 1:
-            module_root = next(iter(module_roots))
-            entries.append(f"{pattern}/{module_root}")
-        else:
-            for rel, m in member_rels.items():
-                if m not in matching_members:
-                    continue
-                entries.append(f"{rel}/{_module_root(m)}")
-
-        for entry in entries:
-            if entry in seen_paths:
-                continue
-            seen_paths.add(entry)
-            results.append(entry)
-
-    return results
-
-
-def _pattern_matches_path(pattern: str, rel_path: str) -> bool:
-    """
-    Return True when ``rel_path`` matches a uv workspace ``members`` pattern.
-
-    Both inputs are POSIX-style paths relative to the workspace root. The
-    comparison runs component-by-component with :func:`fnmatch.fnmatchcase`
-    so ``*`` never crosses ``/``. Patterns with a different number of
-    components than ``rel_path`` never match; this keeps ``packages/*``
-    from silently picking up a nested ``packages/foo/bar`` member (or
-    matching a top-level directory that just happens to end in
-    ``packages/foo``).
-    """
-    pattern_parts = pattern.strip("/").split("/")
-    path_parts = rel_path.strip("/").split("/")
-    if len(pattern_parts) != len(path_parts):
-        return False
-    return all(
-        fnmatch.fnmatchcase(path_part, pattern_part)
-        for pattern_part, path_part in zip(pattern_parts, path_parts, strict=True)
-    )
 
 
 def _workspace_member_paths(
@@ -554,12 +483,67 @@ def _workspace_member_paths(
     return results
 
 
-def ruff_format(projs: list[PyProject]) -> None:
+def _has_project_table(proj: PyProject) -> bool:
     """
-    Execute ruff formatting and linting fixes on a collection of projects.
+    Return True when ``proj`` declares a ``[project]`` table.
+
+    Workspace-only pyproject files (uv workspaces whose root is purely
+    orchestration and defines no ``[project]``) should not contribute a
+    search-path entry because they have no source module to type-check.
     """
-    for proj in projs:
-        _ruff_format(proj.path.parent)
+    return "project" in proj.data
+
+
+def _module_root(proj: PyProject) -> str:
+    """
+    Return the ``[tool.uv.build-backend].module-root`` for ``proj``.
+
+    Defaults to ``"src"`` when the key is unset so uv-build projects
+    that rely on the standard layout still contribute a search-path
+    entry.
+    """
+    build_backend = proj.data.get("tool", {}).get("uv", {}).get("build-backend", {})
+    return str(build_backend.get("module-root", _DEFAULT_MODULE_ROOT))
+
+
+def _module_root_search_paths(
+    *,
+    root_dir: pathlib.Path,
+    root_proj: PyProject,
+    members: Iterable[PyProject],
+) -> list[str]:
+    """
+    Build the type-checker search paths from workspace pyproject metadata.
+
+    Emits one literal ``<rel>/<module-root>`` entry per known project.
+    ``members`` is treated as the authoritative, exclude-honoring member
+    list from uv metadata; the filesystem is never re-scanned. When the
+    root pyproject also declares a ``[project]`` table (a project living
+    at the workspace root), it contributes its own ``module-root``
+    entry so that source tree is type-checked too. Each project's
+    ``module-root`` is honored individually - no globs are written.
+    """
+    results: list[str] = []
+    seen: set[str] = set()
+
+    def _add(entry: str) -> None:
+        if entry and entry not in seen:
+            seen.add(entry)
+            results.append(entry)
+
+    if _has_project_table(root_proj):
+        _add(_module_root(root_proj))
+
+    for member in members:
+        try:
+            rel = member.path.parent.resolve().relative_to(root_dir).as_posix()
+        except ValueError:
+            LOG.debug("Skip member outside root: member=%s path=%s", member, member.path)
+            continue
+        module_root = _module_root(member)
+        _add(module_root if rel in ("", ".") else f"{rel}/{module_root}")
+
+    return results
 
 
 def _ruff_format(path: pathlib.Path) -> None:
