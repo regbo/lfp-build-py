@@ -131,8 +131,16 @@ version = "0.0.0"
     assert "workspace = true" in pkg_a_text
 
 
-def test_sync_pyrefly_collects_module_roots(temp_workspace) -> None:
-    """``[tool.pyrefly].search-path`` lists ``.`` plus each member's module-root."""
+def test_sync_type_checkers_uses_workspace_pattern_with_default_module_root(
+    temp_workspace,
+) -> None:
+    """Workspace patterns keep their glob form when members share ``module-root``.
+
+    Both an explicit ``module-root = "src"`` and a missing build-backend
+    section (which defaults to ``"src"``) contribute to the same ``src``
+    group, so the ``packages/*`` pattern stays intact as ``packages/*/src``
+    for both pyrefly and pyright.
+    """
     root = temp_workspace
     pkg_with = root / "packages" / "dbx-tools-core"
     pkg_with.mkdir(parents=True)
@@ -158,29 +166,175 @@ version = "0.0.0"
     )
 
     tree = pyproject.tree()
-    sync_cmd.sync_pyrefly(tree)
+    sync_cmd.sync_type_checkers(tree)
 
     search_path = list(tree.root.data["tool"]["pyrefly"]["search-path"])
-    assert search_path == [".", "packages/dbx-tools-core/src"]
+    extra_paths = list(tree.root.data["tool"]["pyright"]["extraPaths"])
+    assert search_path == [".", "packages/*/src"]
+    assert extra_paths == [".", "packages/*/src"]
 
 
-def test_sync_pyrefly_defaults_to_dot_when_no_module_roots(temp_workspace) -> None:
-    """The table is still created with ``["."]`` when no member has a module-root."""
-    pkg = temp_workspace / "packages" / "plain"
-    pkg.mkdir(parents=True)
-    (pkg / _config.PYPROJECT_FILE_NAME).write_text(
+def test_sync_type_checkers_expands_pattern_when_module_roots_differ(temp_workspace) -> None:
+    """When members matching one pattern disagree on ``module-root``, expand to literals."""
+    root = temp_workspace
+    pkg_src = root / "packages" / "with-src"
+    pkg_src.mkdir(parents=True)
+    (pkg_src / _config.PYPROJECT_FILE_NAME).write_text(
         """
 [project]
-name = "plain"
+name = "with-src"
+version = "0.0.0"
+
+[tool.uv.build-backend]
+module-root = "src"
+"""
+    )
+    pkg_lib = root / "packages" / "with-lib"
+    pkg_lib.mkdir(parents=True)
+    (pkg_lib / _config.PYPROJECT_FILE_NAME).write_text(
+        """
+[project]
+name = "with-lib"
+version = "0.0.0"
+
+[tool.uv.build-backend]
+module-root = "lib"
+"""
+    )
+
+    tree = pyproject.tree()
+    sync_cmd.sync_type_checkers(tree)
+
+    search_path = list(tree.root.data["tool"]["pyrefly"]["search-path"])
+    extra_paths = list(tree.root.data["tool"]["pyright"]["extraPaths"])
+    expected = [".", "packages/with-lib/lib", "packages/with-src/src"]
+    assert sorted(search_path) == sorted(expected)
+    assert sorted(extra_paths) == sorted(expected)
+
+
+def test_sync_type_checkers_defaults_to_dot_without_workspace_members(temp_workspace) -> None:
+    """With no ``[tool.uv.workspace].members`` patterns, search paths stay ``["."]``."""
+    pyproject_path = temp_workspace / _config.PYPROJECT_FILE_NAME
+    pyproject_path.write_text(
+        """
+[project]
+name = "test-workspace"
+version = "0.1.0"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+"""
+    )
+
+    tree = pyproject.tree()
+    sync_cmd.sync_type_checkers(tree)
+
+    search_path = list(tree.root.data["tool"]["pyrefly"]["search-path"])
+    extra_paths = list(tree.root.data["tool"]["pyright"]["extraPaths"])
+    assert search_path == ["."]
+    assert extra_paths == ["."]
+
+
+def test_sync_type_checkers_honors_workspace_exclude(temp_workspace) -> None:
+    """Excluded directories on disk must not contribute to the search paths.
+
+    The pattern-based matcher only ever consults the workspace tree's
+    known members, so a directory that lives under ``packages/`` but is
+    excluded from ``[tool.uv.workspace]`` never leaks into the pyrefly /
+    pyright search paths, even though the filesystem still contains it.
+    """
+    root = temp_workspace
+    pyproject_path = root / _config.PYPROJECT_FILE_NAME
+    pyproject_path.write_text(
+        """
+[project]
+name = "test-workspace"
+version = "0.1.0"
+
+[tool.uv.workspace]
+members = ["packages/*"]
+exclude = ["packages/legacy"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+"""
+    )
+
+    live = root / "packages" / "live"
+    live.mkdir(parents=True)
+    (live / _config.PYPROJECT_FILE_NAME).write_text(
+        """
+[project]
+name = "live"
+version = "0.0.0"
+"""
+    )
+    legacy = root / "packages" / "legacy"
+    legacy.mkdir(parents=True)
+    (legacy / _config.PYPROJECT_FILE_NAME).write_text(
+        """
+[project]
+name = "legacy"
 version = "0.0.0"
 """
     )
 
     tree = pyproject.tree()
-    sync_cmd.sync_pyrefly(tree)
+    sync_cmd.sync_type_checkers(tree)
 
     search_path = list(tree.root.data["tool"]["pyrefly"]["search-path"])
-    assert search_path == ["."]
+    extra_paths = list(tree.root.data["tool"]["pyright"]["extraPaths"])
+    assert search_path == [".", "packages/*/src"]
+    assert extra_paths == [".", "packages/*/src"]
+
+
+def test_sync_type_checkers_supports_multi_depth_pattern(temp_workspace) -> None:
+    """A deeper pattern like ``app-packages/cool/*`` keeps its glob form.
+
+    Component-wise matching means ``*`` only fills the final directory
+    component, so a pattern nested two levels deep still collapses to
+    ``<pattern>/src`` when its members share a module-root.
+    """
+    root = temp_workspace
+    pyproject_path = root / _config.PYPROJECT_FILE_NAME
+    pyproject_path.write_text(
+        """
+[project]
+name = "test-workspace"
+version = "0.1.0"
+
+[tool.uv.workspace]
+members = ["app-packages/cool/*"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+"""
+    )
+
+    for pkg_name in ("alpha", "beta"):
+        pkg_dir = root / "app-packages" / "cool" / pkg_name
+        pkg_dir.mkdir(parents=True)
+        (pkg_dir / _config.PYPROJECT_FILE_NAME).write_text(
+            f"""
+[project]
+name = "{pkg_name}"
+version = "0.0.0"
+
+[tool.uv.build-backend]
+module-root = "src"
+"""
+        )
+
+    tree = pyproject.tree()
+    sync_cmd.sync_type_checkers(tree)
+
+    search_path = list(tree.root.data["tool"]["pyrefly"]["search-path"])
+    extra_paths = list(tree.root.data["tool"]["pyright"]["extraPaths"])
+    assert search_path == [".", "app-packages/cool/*/src"]
+    assert extra_paths == [".", "app-packages/cool/*/src"]
 
 
 def test_version_parse_single_part_pads_to_three_parts() -> None:
